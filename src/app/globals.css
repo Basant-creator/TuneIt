@@ -1,0 +1,101 @@
+@import 'tailwindcss';
+
+:root {
+  --background: #F8FFE5;
+  --foreground: #000000;
+
+  --brand-pink: #FF006E;
+  --brand-blue: #01BEFE;
+  --brand-yellow: #FFDD00;
+  --brand-orange: #F35B04;
+  
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+  --font-handwriting: var(--font-handwriting);
+}
+
+@theme {
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+  --font-handwriting: var(--font-handwriting);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-orange: var(--brand-orange);
+}
+
+/* Neo Brutalist Styles */
+.neo-border {
+  border: 3px solid #000000;
+}
+
+.neo-shadow {
+  box-shadow: 6px 6px 0px 0px #000000;
+}
+
+.neo-shadow-sm {
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+.neo-shadow-lg {
+  box-shadow: 10px 10px 0px 0px #000000;
+}
+
+.neo-interactive {
+  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.neo-interactive:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 9px 9px 0px 0px #000000;
+}
+
+.neo-interactive:active {
+  transform: translate(2px, 2px);
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+body {
+  font-family: var(--font-mono), monospace;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+h1 {
+  font-family: var(--font-heading), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+h2, h3, h4, h5, h6 {
+  font-family: var(--font-mono), monospace;
+  letter-spacing: -0.01em;
+}
+
+.font-handwritten {
+  font-family: var(--font-handwriting), cursive;
+}
+
+/* Custom Scrollbar for Neo-Brutalist style */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFFFFF;
+  border-left: 3px solid #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-pink);
+  border: 3px solid #000000;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-orange);
+}
