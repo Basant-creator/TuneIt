@@ -10,6 +10,7 @@ import {
   Heart,
 } from 'lucide-react';
 
+import { cn } from '@/utils/cn';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { DoodleElement } from '@/components/DoodleElement';
@@ -106,6 +107,11 @@ const flowModes = [
     title: 'Build Up',
     description: 'Gradually increase tempo and density. Ideal for building high-energy momentum throughout your set.',
     color: 'pink' as const,
+    features: [
+      'BPM Climb: Incremental (+10% BPM)',
+      'Harmonic Link: Camelot wheel matching',
+      'Energy Curve: Continuous momentum rise',
+    ],
   },
   {
     id: 'df',
@@ -113,6 +119,11 @@ const flowModes = [
     title: 'Drift',
     description: 'Smooth, atmospheric transitions that preserve mood and ambient energy levels without sharp drops.',
     color: 'blue' as const,
+    features: [
+      'BPM Shift: Subtly constant (+-2% BPM)',
+      'Transitions: Ambient sound preservation',
+      'Energy Curve: Flat floating plateau',
+    ],
   },
   {
     id: 'ph',
@@ -120,6 +131,11 @@ const flowModes = [
     title: 'Peak Hour',
     description: 'Keeps energy at maximum levels. Transitions optimized specifically for heavy basslines and drops.',
     color: 'orange' as const,
+    features: [
+      'BPM Intensity: Heavy pacing (128-140 BPM)',
+      'Transitions: High-contrast bass drops',
+      'Energy Curve: Sustained climax profile',
+    ],
   },
   {
     id: 'cm',
@@ -127,6 +143,11 @@ const flowModes = [
     title: 'Cinematic',
     description: 'Large, theatrical sweeps with custom tension arcs, dynamic tempo shifts, and intense build-up sections.',
     color: 'white' as const,
+    features: [
+      'BPM Shifts: Broad narrative pacing',
+      'Transitions: Theatrical builds & tension',
+      'Energy Curve: Wave-like progression curve',
+    ],
   },
 ];
 
@@ -139,24 +160,7 @@ export default function Home() {
     target: containerRef,
   });
 
-  const [translateX, setTranslateX] = React.useState('-30%');
-
-  React.useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 640) {
-        setTranslateX('-60%');
-      } else if (window.innerWidth < 1024) {
-        setTranslateX('-40%');
-      } else {
-        setTranslateX('-22%');
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const x = useTransform(scrollYProgress, [0.1, 0.9], ['0%', translateX]);
+  const x = useTransform(scrollYProgress, [0.1, 0.9], ['0%', '-75%']);
 
   const fixPlaylistFlow = () => {
     setActiveTab('optimized');
@@ -167,7 +171,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FFE5] text-black overflow-x-hidden relative pb-16">
+    <div className="min-h-screen bg-[#F8FFE5] text-black relative pb-16">
       
       {/* 1. STYLISH NAVBAR */}
       <header className="w-full py-5 px-6 md:px-12 border-b-3 border-black bg-white flex items-center justify-between sticky top-0 z-50 select-none">
@@ -388,59 +392,145 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 4. FLOW MODES PREVIEW WITH PREMIUM VERTICAL-TO-HORIZONTAL SCROLL */}
+      {/* 4. FLOW MODES PREVIEW WITH FULL SCREEN HORIZONTAL SCROLL */}
       <section 
         id="modes" 
         ref={containerRef} 
-        className="relative w-full h-[220vh] select-none"
+        className="relative w-full h-[400vh] select-none"
       >
-        <div className="sticky top-[80px] h-[calc(100vh-80px)] overflow-hidden flex flex-col justify-center bg-[#F8FFE5]">
+        <div className="sticky top-[80px] h-[calc(100vh-80px)] overflow-hidden flex flex-col justify-center bg-white border-b-3 border-black">
           
-          {/* Static section header pinned at the top */}
-          <div className="text-center max-w-3xl mx-auto mb-10 space-y-4 px-6 shrink-0">
-            <Sticker color="blue" rotation={3} size="sm">
-              🚀 JOURNEY ARCHETYPES
-            </Sticker>
-            
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
-              Choose Your Listening Journey
-            </h2>
-            
-            <p className="text-xs sm:text-sm font-bold font-mono text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Not every listening session is built the same. Whether you are hitting a heavy peak-hour workout, floating on a progressive sunset, or diving into dramatic cinematic arcs, we have a flow curve specifically designed for it.
-            </p>
-          </div>
+          <motion.div 
+            style={{ x }} 
+            className="flex w-[400vw] h-full"
+          >
+            {flowModes.map((mode, idx) => {
+              const bgColors = {
+                pink: 'bg-brand-pink text-white',
+                blue: 'bg-brand-blue text-black',
+                orange: 'bg-brand-orange text-white',
+                white: 'bg-brand-yellow text-black',
+              };
 
-          {/* Horizontal scrollable cards track */}
-          <div className="w-full overflow-hidden flex items-center relative py-4">
-            <motion.div 
-              style={{ x }} 
-              className="flex gap-8 px-6 md:px-24 w-max"
-            >
-              {flowModes.map((mode) => (
+              return (
                 <div 
                   key={mode.id} 
-                  className="w-[280px] sm:w-[320px] shrink-0 h-[280px] sm:h-[300px]"
+                  className={cn(
+                    "w-screen h-full flex-shrink-0 flex items-center justify-center px-6 md:px-20 py-8 relative",
+                    bgColors[mode.color]
+                  )}
                 >
-                  <FlowModeCard
-                    emoji={mode.emoji}
-                    title={mode.title}
-                    description={mode.description}
-                    color={mode.color}
-                    selected={selectedFlow === mode.id}
-                    onClick={() => setSelectedFlow(mode.id)}
-                  />
-                </div>
-              ))}
-            </motion.div>
-          </div>
+                  <div className="w-full max-w-7xl h-[85%] grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    
+                    {/* Left Column: White Neo-Brutalist Card */}
+                    <div className="lg:col-span-5 flex flex-col justify-center">
+                      <div className="bg-white text-black neo-border neo-shadow-lg rounded-3xl p-6 sm:p-8 flex flex-col justify-between w-full max-w-lg min-h-[460px] hover:translate-y-[-2px] transition-all">
+                        
+                        <div className="flex items-center justify-between border-b-3 border-black pb-4 mb-4 select-none">
+                          <span className="neo-border px-3 py-1 text-xs font-black uppercase rounded-lg bg-black text-white">
+                            FLOW ARCHETYPE 0{idx + 1}
+                          </span>
+                          {selectedFlow === mode.id && (
+                            <span className="text-xs font-mono font-black text-brand-pink uppercase tracking-wide flex items-center gap-1">
+                              ✦ Active
+                            </span>
+                          )}
+                        </div>
 
-          {/* Details sticker for currently active flow mode */}
-          <div className="mt-8 flex justify-center px-6 shrink-0">
-            <Sticker color="white" rotation={-1} size="md" className="text-sm font-mono max-w-xl text-center">
-              💡 Active Selection: <span className="text-brand-pink font-extrabold uppercase">{flowModes.find(m => m.id === selectedFlow)?.title}</span> curve guarantees smooth transitions!
-            </Sticker>
-          </div>
+                        <div className="flex items-center gap-3.5 mb-4">
+                          <div className="w-12 h-12 rounded-xl neo-border bg-brand-yellow text-black flex items-center justify-center text-2xl shadow-sm transform -rotate-6 select-none shrink-0">
+                            {mode.emoji}
+                          </div>
+                          <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
+                            {mode.title}
+                          </h3>
+                        </div>
+
+                        <p className="text-xs sm:text-sm font-bold font-mono text-slate-700 leading-relaxed mb-6">
+                          {mode.description}
+                        </p>
+
+                        <div className="space-y-3 font-mono text-xs font-black mb-6">
+                          {mode.features.map((feature, fIdx) => (
+                            <div key={fIdx} className="flex items-center gap-2 bg-slate-50 border-2 border-black rounded-lg p-2.5 shadow-sm">
+                              <span className="w-4 h-4 rounded-full bg-brand-pink border border-black flex items-center justify-center text-[8px] text-white font-black shrink-0">
+                                ✦
+                              </span>
+                              <span className="truncate">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setSelectedFlow(mode.id)}
+                          className={cn(
+                            "w-full py-3 neo-border rounded-xl font-black uppercase text-xs tracking-wider transition-all select-none",
+                            selectedFlow === mode.id
+                              ? "bg-black text-white translate-y-[2px] shadow-none"
+                              : "bg-brand-yellow text-black hover:translate-y-[-2px] hover:shadow-md active:translate-y-[2px]"
+                          )}
+                        >
+                          {selectedFlow === mode.id ? "✓ Active Selection" : "Activate Flow ⚡"}
+                        </button>
+
+                      </div>
+                    </div>
+
+                    {/* Right Column: Doodle Canvas container */}
+                    <div className="lg:col-span-7 h-full w-full flex items-center justify-center relative min-h-[300px] lg:min-h-0">
+                      <div className="w-full h-full rounded-3xl border-3 border-black neo-shadow-lg bg-white relative overflow-hidden bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] [background-size:16px_16px] p-6 flex flex-col justify-between">
+                        
+                        <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-3 select-none">
+                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
+                            Viewport Canvas // 0{idx + 1}
+                          </span>
+                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
+                            Flow Sandbox ✦
+                          </span>
+                        </div>
+
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                          
+                          <div className="absolute top-12 left-16 w-14 h-14 text-brand-pink pointer-events-auto">
+                            <DoodleElement type="musicNote" />
+                          </div>
+                          <div className="absolute bottom-16 right-20 w-12 h-12 text-brand-blue pointer-events-auto">
+                            <DoodleElement type="sparkle" />
+                          </div>
+                          <div className="absolute top-16 right-24 w-12 h-12 text-brand-orange pointer-events-auto">
+                            <DoodleElement type="star" />
+                          </div>
+                          <div className="absolute bottom-16 left-24 w-24 h-8 text-black/20 pointer-events-auto">
+                            <DoodleElement type="wave" />
+                          </div>
+
+                          <div className="text-center font-mono">
+                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 border-2 border-dashed border-slate-300 rounded-xl px-4 py-8 bg-slate-50/50">
+                              [ Doodles Canvas Sandbox ]<br />
+                              <span className="text-[9px] text-slate-400 font-medium normal-case block mt-1.5 max-w-[240px] mx-auto leading-normal">
+                                Preset floating doodles active. Feel free to load illustrations or custom SVG drawings inside this node space.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between select-none">
+                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
+                            tuneit.labs/modes
+                          </span>
+                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
+                            {mode.title}
+                          </span>
+                        </div>
+
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })}
+          </motion.div>
 
         </div>
       </section>

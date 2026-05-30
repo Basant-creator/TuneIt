@@ -52,24 +52,9 @@ export function Sticker({
     lg: 'px-5 py-2.5 text-lg md:text-2xl font-bold tracking-wider',
   };
 
-  const wobblyAnimation = {
-    y: [0, -6, 2, -5, 3, -3, 0],
-    rotate: [tilt, tilt - 3, tilt + 4, tilt - 2, tilt + 3, tilt - 3, tilt],
-  };
-
-  const wobblyTransition = {
-    duration: 5,
-    repeat: Infinity,
-    repeatType: 'mirror' as const,
-    ease: 'easeInOut' as const,
-    delay: randomDelay,
-  };
-
   return (
     <motion.div
       style={{ rotate: tilt }}
-      animate={wobblyAnimation}
-      transition={wobblyTransition}
       whileHover={{ 
         scale: 1.1, 
         rotate: tilt + (tilt > 0 ? 5 : -5),

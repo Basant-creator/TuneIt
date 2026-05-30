@@ -19,6 +19,11 @@ export function DoodleElement({
   color = 'currentColor',
   animate = true,
 }: DoodleElementProps) {
+  const [randomDelay, setRandomDelay] = React.useState(0);
+
+  React.useEffect(() => {
+    setRandomDelay(Math.random() * 3);
+  }, []);
   // SVG paths for hand-drawn music and Brutalist elements
   const svgs: Record<DoodleType, React.ReactNode> = {
     arrow: (
@@ -109,14 +114,17 @@ export function DoodleElement({
   const animationProps = animate
     ? {
         animate: {
-          rotate: [0, -3, 3, -2, 2, 0],
-          scale: [1, 1.02, 0.98, 1.01, 0.99, 1],
+          x: [0, 6, -4, 5, -5, 3, 0],
+          y: [0, -14, 5, -10, 8, -5, 0],
+          rotate: [0, -6, 8, -4, 6, -3, 0],
+          scale: [1, 1.06, 0.94, 1.03, 0.97, 1.02, 1],
         },
         transition: {
-          duration: 4,
+          duration: 6,
           repeat: Infinity,
-          repeatType: 'reverse' as const,
+          repeatType: 'mirror' as const,
           ease: 'easeInOut' as const,
+          delay: randomDelay,
         },
       }
     : {};

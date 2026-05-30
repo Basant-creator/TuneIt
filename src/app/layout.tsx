@@ -8,6 +8,7 @@ const specialGothic = Special_Gothic_Expanded_One({
   weight: '400',
   subsets: ['latin'],
   adjustFontFallback: false,
+  fallback: ['system-ui', 'sans-serif'],
 });
 
 const azeretMono = Azeret_Mono({
