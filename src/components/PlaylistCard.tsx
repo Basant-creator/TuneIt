@@ -82,7 +82,7 @@ export function PlaylistCard({
       )}
 
       {/* Track List */}
-      <div className="space-y-3 flex-1 overflow-y-auto max-h-[360px] pr-1">
+      <div className="space-y-3 flex-1 overflow-y-auto max-h-[360px] pr-1 no-scrollbar">
         {tracks.map((track, idx) => {
           // Calculate transition gap for sequenced flow
           const nextTrack = tracks[idx + 1];
