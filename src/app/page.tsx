@@ -19,6 +19,7 @@ import { FlowModeCard } from '@/components/FlowModeCard';
 import { EnergyGraph } from '@/components/EnergyGraph';
 import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
+import { FlowSandbox } from '@/components/FlowSandbox';
 
 // Mock songs list representing chaotic order
 const chaoticTracks = [
@@ -154,6 +155,7 @@ const flowModes = [
 export default function Home() {
   const [activeTab, setActiveTab] = React.useState<'chaotic' | 'optimized'>('chaotic');
   const [selectedFlow, setSelectedFlow] = React.useState('bu');
+  const [selectedSandboxTrackIds, setSelectedSandboxTrackIds] = React.useState<string[]>(['s1', 's2', 's3', 's4']);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -489,30 +491,40 @@ export default function Home() {
                           </span>
                         </div>
 
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-                          
-                          <div className="absolute top-12 left-16 w-14 h-14 text-brand-pink pointer-events-auto">
-                            <DoodleElement type="musicNote" />
+                        {mode.id === 'df' ? (
+                          <div className="flex-1 mt-3 overflow-hidden flex flex-col justify-between">
+                            <FlowSandbox
+                              modeId={mode.id}
+                              selectedTrackIds={selectedSandboxTrackIds}
+                              onChangeSelected={setSelectedSandboxTrackIds}
+                            />
                           </div>
-                          <div className="absolute bottom-16 right-20 w-12 h-12 text-brand-blue pointer-events-auto">
-                            <DoodleElement type="sparkle" />
-                          </div>
-                          <div className="absolute top-16 right-24 w-12 h-12 text-brand-orange pointer-events-auto">
-                            <DoodleElement type="star" />
-                          </div>
-                          <div className="absolute bottom-16 left-24 w-24 h-8 text-black/20 pointer-events-auto">
-                            <DoodleElement type="wave" />
-                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                            
+                            <div className="absolute top-12 left-16 w-14 h-14 text-brand-pink pointer-events-auto">
+                              <DoodleElement type="musicNote" />
+                            </div>
+                            <div className="absolute bottom-16 right-20 w-12 h-12 text-brand-blue pointer-events-auto">
+                              <DoodleElement type="sparkle" />
+                            </div>
+                            <div className="absolute top-16 right-24 w-12 h-12 text-brand-orange pointer-events-auto">
+                              <DoodleElement type="star" />
+                            </div>
+                            <div className="absolute bottom-16 left-24 w-24 h-8 text-black/20 pointer-events-auto">
+                              <DoodleElement type="wave" />
+                            </div>
 
-                          <div className="text-center font-mono">
-                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 border-2 border-dashed border-slate-300 rounded-xl px-4 py-8 bg-slate-50/50">
-                              [ Doodles Canvas Sandbox ]<br />
-                              <span className="text-[9px] text-slate-400 font-medium normal-case block mt-1.5 max-w-[240px] mx-auto leading-normal">
-                                Preset floating doodles active. Feel free to load illustrations or custom SVG drawings inside this node space.
-                              </span>
+                            <div className="text-center font-mono">
+                              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 border-2 border-dashed border-slate-300 rounded-xl px-4 py-8 bg-slate-50/50">
+                                [ Doodles Canvas Sandbox ]<br />
+                                <span className="text-[9px] text-slate-400 font-medium normal-case block mt-1.5 max-w-[240px] mx-auto leading-normal">
+                                  Preset floating doodles active. Feel free to load illustrations or custom SVG drawings inside this node space.
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex items-center justify-between select-none">
                           <span className="font-mono text-[9px] font-black uppercase text-slate-400">
