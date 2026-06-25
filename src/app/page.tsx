@@ -220,13 +220,13 @@ export default function Home() {
 
           {/* Hero Main Headline */}
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight leading-none text-black">
-            YOUR PLAYLIST <br />
-            HAS <span className="bg-brand-yellow px-2 py-0.5 inline-block border-3 border-black rounded-xl transform rotate-1">NO FLOW.</span>
+            Stop being a <br />
+            <span className="bg-brand-yellow px-2 py-0.5 inline-block border-3 border-black rounded-xl transform rotate-1">Passive Listener.</span>
           </h1>
 
           {/* Hero Supporting copy */}
           <p className="text-sm sm:text-base font-extrabold font-mono text-slate-700 leading-relaxed max-w-xl">
-            TuneIt transforms chaotic playlists into intentional listening journeys. We intelligently sequence your tracks based on harmonic key compatibility, tempo flow, and energy curves.
+            Every playlist has potentials, yours as well. Use us to bring out the best version your playlist can be.
           </p>
 
           {/* Action CTAs */}
@@ -288,7 +288,7 @@ export default function Home() {
           </Sticker>
           
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
-            Stop giving your listeners whiplash
+            Stop giving yourself whiplash
           </h2>
           
           <p className="text-xs sm:text-sm font-bold font-mono text-slate-600 max-w-2xl mx-auto leading-relaxed">

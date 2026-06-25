@@ -134,7 +134,7 @@ export function EnergyGraph({ className, activeMode = 'chaotic' }: EnergyGraphPr
               exit={{ opacity: 0, rotate: 0, scale: 0.8 }}
               className="absolute right-4 bottom-8 neo-border px-3 py-1 bg-brand-pink text-white rounded font-handwritten text-sm select-none z-20 shadow-sm"
             >
-              {"🎧 \"This sequence gives listeners whiplash!\""}
+              {"🎧 \"This sequence gives you whiplash\""}
             </motion.div>
           ) : (
             <motion.div
