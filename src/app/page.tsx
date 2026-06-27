@@ -155,7 +155,7 @@ const flowModes = [
 export default function Home() {
   const [activeTab, setActiveTab] = React.useState<'chaotic' | 'optimized'>('chaotic');
   const [selectedFlow, setSelectedFlow] = React.useState('bu');
-  const [selectedSandboxTrackIds, setSelectedSandboxTrackIds] = React.useState<string[]>(['s1', 's2', 's3', 's4']);
+  const [selectedSandboxTrackIds, setSelectedSandboxTrackIds] = React.useState<string[]>(['s1', 's2', 's3', 's4', 's5']);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
