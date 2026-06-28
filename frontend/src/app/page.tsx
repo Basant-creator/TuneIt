@@ -105,49 +105,49 @@ const flowModes = [
   {
     id: 'bu',
     emoji: '🚀',
-    title: 'Build Up',
-    description: 'Gradually increase tempo and density. Ideal for building high-energy momentum throughout your set.',
+    title: 'Rise',
+    description: 'Start with a strut, end with a march. This journey escalates through gritty confidence and anthemic tension, steadily charging your emotional battery until you feel completely invincible.',
     color: 'pink' as const,
     features: [
-      'BPM Climb: Incremental (+10% BPM)',
-      'Harmonic Link: Camelot wheel matching',
-      'Energy Curve: Continuous momentum rise',
+      'Philosophy: A deliberate ascent to self-assured power',
+      'Vibe: Anthemic, Grit, Swagger',
+      'Purpose: Gradual momentum & rise',
     ],
   },
   {
     id: 'df',
     emoji: '🌊',
     title: 'Drift',
-    description: 'Smooth, atmospheric transitions that preserve mood and ambient energy levels without sharp drops.',
+    description: 'Drift away into a dreamlike dreamscape. This journey glides smoothly through chilled synthwave, lo-fi haze, and euphoric house, ensuring there are no sudden drops to break your trance.',
     color: 'blue' as const,
     features: [
-      'BPM Shift: Subtly constant (+-2% BPM)',
-      'Transitions: Ambient sound preservation',
-      'Energy Curve: Flat floating plateau',
+      'Philosophy: Continuous state of atmospheric immersion',
+      'Vibe: Dreamlike, Ambient, Fluid',
+      'Purpose: Smooth transitions, no drops',
     ],
   },
   {
     id: 'ph',
-    emoji: '⚡',
-    title: 'Peak Hour',
-    description: 'Keeps energy at maximum levels. Transitions optimized specifically for heavy basslines and drops.',
+    emoji: '😈',
+    title: 'Unhinged',
+    description: 'Disregard genre borders. This experience bounces between breezy indie-pop, psychedelic rock, swaggering hip-hop, and raw, classic diss tracks to deliver a satisfyingly unpredictable thrill.',
     color: 'orange' as const,
     features: [
-      'BPM Intensity: Heavy pacing (128-140 BPM)',
-      'Transitions: High-contrast bass drops',
-      'Energy Curve: Sustained climax profile',
+      'Philosophy: A wild roller coaster of style & surprise',
+      'Vibe: Unpredictable, Defiant, Playful',
+      'Purpose: Satisfying system shocks',
     ],
   },
   {
     id: 'cm',
-    emoji: '🎭',
-    title: 'Cinematic',
-    description: 'Large, theatrical sweeps with custom tension arcs, dynamic tempo shifts, and intense build-up sections.',
+    emoji: '🎬',
+    title: 'Frame',
+    description: 'A sweeping sequence of high-drama hooks and timeless grooves, paced to evoke distinct acts of a movie—from tense setups to soaring resolution.',
     color: 'white' as const,
     features: [
-      'BPM Shifts: Broad narrative pacing',
-      'Transitions: Theatrical builds & tension',
-      'Energy Curve: Wave-like progression curve',
+      'Philosophy: Walking through legendary movie scenes',
+      'Vibe: Cinematic, Theatrical, Soulful',
+      'Purpose: Capturing high-drama arcs',
     ],
   },
 ];
@@ -155,7 +155,12 @@ const flowModes = [
 export default function Home() {
   const [activeTab, setActiveTab] = React.useState<'chaotic' | 'optimized'>('chaotic');
   const [selectedFlow, setSelectedFlow] = React.useState('bu');
-  const [selectedSandboxTrackIds, setSelectedSandboxTrackIds] = React.useState<string[]>(['s1', 's2', 's3', 's4', 's5']);
+  const [selectedTrackIdsByMode, setSelectedTrackIdsByMode] = React.useState<Record<string, string[]>>({
+    bu: ['r1', 'r2', 'r3', 'r4', 'r5'],
+    df: ['d1', 'd2', 'd3', 'd4', 'd5'],
+    ph: ['u1', 'u2', 'u3', 'u4', 'u5'],
+    cm: ['f1', 'f2', 'f3', 'f4', 'f5'],
+  });
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -491,40 +496,18 @@ export default function Home() {
                           </span>
                         </div>
 
-                        {mode.id === 'df' ? (
-                          <div className="flex-1 mt-3 overflow-hidden flex flex-col justify-between">
-                            <FlowSandbox
-                              modeId={mode.id}
-                              selectedTrackIds={selectedSandboxTrackIds}
-                              onChangeSelected={setSelectedSandboxTrackIds}
-                            />
-                          </div>
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-                            
-                            <div className="absolute top-12 left-16 w-14 h-14 text-brand-pink pointer-events-auto">
-                              <DoodleElement type="musicNote" />
-                            </div>
-                            <div className="absolute bottom-16 right-20 w-12 h-12 text-brand-blue pointer-events-auto">
-                              <DoodleElement type="sparkle" />
-                            </div>
-                            <div className="absolute top-16 right-24 w-12 h-12 text-brand-orange pointer-events-auto">
-                              <DoodleElement type="star" />
-                            </div>
-                            <div className="absolute bottom-16 left-24 w-24 h-8 text-black/20 pointer-events-auto">
-                              <DoodleElement type="wave" />
-                            </div>
-
-                            <div className="text-center font-mono">
-                              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 border-2 border-dashed border-slate-300 rounded-xl px-4 py-8 bg-slate-50/50">
-                                [ Doodles Canvas Sandbox ]<br />
-                                <span className="text-[9px] text-slate-400 font-medium normal-case block mt-1.5 max-w-[240px] mx-auto leading-normal">
-                                  Preset floating doodles active. Feel free to load illustrations or custom SVG drawings inside this node space.
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        <div className="flex-1 mt-3 overflow-hidden flex flex-col justify-between">
+                          <FlowSandbox
+                            modeId={mode.id}
+                            selectedTrackIds={selectedTrackIdsByMode[mode.id] || []}
+                            onChangeSelected={(ids) => {
+                              setSelectedTrackIdsByMode((prev) => ({
+                                ...prev,
+                                [mode.id]: ids,
+                              }));
+                            }}
+                          />
+                        </div>
 
                         <div className="flex items-center justify-between select-none">
                           <span className="font-mono text-[9px] font-black uppercase text-slate-400">
