@@ -41,10 +41,12 @@ export function CTASection() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center gap-4 justify-center w-full max-w-md">
-          <NeoButton color="yellow" size="lg" className="w-full sm:w-auto">
-            <span>Get Started Free</span>
-            <ArrowRight className="w-5 h-5 stroke-[3px]" />
-          </NeoButton>
+          <a href="http://127.0.0.1:3001/auth/login" className="w-full sm:w-auto">
+            <NeoButton color="yellow" size="lg" className="w-full">
+              <span>Get Started Free</span>
+              <ArrowRight className="w-5 h-5 stroke-[3px]" />
+            </NeoButton>
+          </a>
           
           <NeoButton color="white" size="lg" className="w-full sm:w-auto">
             <span>Explore Flow Modes</span>

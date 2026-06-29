@@ -162,6 +162,32 @@ export default function Home() {
     cm: ['f1', 'f2', 'f3', 'f4', 'f5'],
   });
 
+  const [userProfile, setUserProfile] = React.useState<any>(null);
+  const [playlists, setPlaylists] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch('http://127.0.0.1:3001/api/me')
+      .then((res) => {
+        if (!res.ok) throw new Error('Unauthenticated');
+        return res.json();
+      })
+      .then((profile) => {
+        console.log('[TuneIt Backend] Connected! Profile:', profile);
+        setUserProfile(profile);
+        return fetch('http://127.0.0.1:3001/api/playlists');
+      })
+      .then((res) => (res ? res.json() : null))
+      .then((playlistsData) => {
+        if (playlistsData && playlistsData.items) {
+          console.log('[TuneIt Backend] Playlists fetched:', playlistsData.items);
+          setPlaylists(playlistsData.items);
+        }
+      })
+      .catch((err) => {
+        console.log('[TuneIt Backend] No active session or connection failed:', err.message);
+      });
+  }, []);
+
   const containerRef = React.useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -198,9 +224,26 @@ export default function Home() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
-            Connect Spotify ⚡
-          </NeoButton>
+          {userProfile ? (
+            <div className="flex items-center gap-2 bg-[#F8FFE5] neo-border px-3.5 py-1.5 rounded-xl border-black select-none">
+              {userProfile.images?.[0]?.url && (
+                <img
+                  src={userProfile.images[0].url}
+                  alt={userProfile.display_name}
+                  className="w-6 h-6 rounded-full border-2 border-black"
+                />
+              )}
+              <span className="font-mono text-xs font-black text-black">
+                {userProfile.display_name || 'Spotify Active'} ⚡
+              </span>
+            </div>
+          ) : (
+            <a href="http://127.0.0.1:3001/auth/login">
+              <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
+                Connect Spotify ⚡
+              </NeoButton>
+            </a>
+          )}
         </div>
       </header>
 
