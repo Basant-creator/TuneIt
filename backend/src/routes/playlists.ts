@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { getPlaylists } from '../controllers/playlistController';
-import { getMe } from '../controllers/authController';
+import { getPlaylists, getMe } from '../controllers/ytmusicController';
 
 const router = Router();
 

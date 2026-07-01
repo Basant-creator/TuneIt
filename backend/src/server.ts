@@ -1,17 +1,17 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { spotifyConfig } from './config/spotify';
+import { googleConfig } from './config/ytmusic';
 import authRoutes from './routes/auth';
 import playlistRoutes from './routes/playlists';
 
 const app = express();
-const PORT = spotifyConfig.port;
+const PORT = googleConfig.port;
 
 // Configure CORS
 app.use(
   cors({
     origin: [
-      spotifyConfig.frontendUrl,
+      googleConfig.frontendUrl,
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'http://localhost:3000',
@@ -63,7 +63,7 @@ app.listen(PORT, () => {
   console.log(`=================================================`);
   console.log(`🎵 TuneIt Backend Server listening on Port: ${PORT}`);
   console.log(`🔗 Local Address: http://127.0.0.1:${PORT}`);
-  console.log(`🔗 Frontend Allowed URL: ${spotifyConfig.frontendUrl}`);
+  console.log(`🔗 Frontend Allowed URL: ${googleConfig.frontendUrl}`);
   console.log(`=================================================`);
 });
 export default app;

@@ -234,13 +234,13 @@ export default function Home() {
                 />
               )}
               <span className="font-mono text-xs font-black text-black">
-                {userProfile.display_name || 'Spotify Active'} ⚡
+                {userProfile.display_name || 'YouTube Music Active'} ⚡
               </span>
             </div>
           ) : (
             <a href="http://127.0.0.1:3001/auth/login">
               <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
-                Connect Spotify ⚡
+                Connect YouTube Music ⚡
               </NeoButton>
             </a>
           )}

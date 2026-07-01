@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, callback } from '../controllers/authController';
+import { login, callback } from '../controllers/ytmusicController';
 
 const router = Router();
 
