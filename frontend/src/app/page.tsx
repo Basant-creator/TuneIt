@@ -9,6 +9,7 @@ import {
   ListRestart,
   Heart,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import { cn } from '@/utils/cn';
 import { NeoButton } from '@/components/NeoButton';
@@ -153,6 +154,7 @@ const flowModes = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<'chaotic' | 'optimized'>('chaotic');
   const [selectedFlow, setSelectedFlow] = React.useState('bu');
   const [selectedTrackIdsByMode, setSelectedTrackIdsByMode] = React.useState<Record<string, string[]>>({
@@ -197,6 +199,14 @@ export default function Home() {
 
   const fixPlaylistFlow = () => {
     setActiveTab('optimized');
+  };
+
+  const handleGetStarted = () => {
+    if (userProfile) {
+      router.push('/playlists');
+    } else {
+      window.location.href = 'http://127.0.0.1:3001/auth/login';
+    }
   };
 
   const resetPlaylistFlow = () => {
@@ -281,7 +291,7 @@ export default function Home() {
 
           {/* Action CTAs */}
           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <NeoButton color="orange" size="lg" onClick={fixPlaylistFlow}>
+            <NeoButton color="orange" size="lg" onClick={handleGetStarted}>
               <span>Get Started</span>
               <ArrowRight className="w-5 h-5 stroke-[3px]" />
             </NeoButton>
