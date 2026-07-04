@@ -142,28 +142,45 @@ export class YtMusicService {
       });
 
       console.log(`[YtMusicService] Fetching items for playlist: ${playlistId}...`);
-      const response = await youtube.playlistItems.list({
-        part: ['snippet'],
-        playlistId: playlistId,
-        maxResults: 50,
-      });
+      let allItems: any[] = [];
+      let nextPageToken: string | undefined = undefined;
 
-      const items = response.data.items || [];
-      const videoIds = items.map(item => item.snippet?.resourceId?.videoId).filter(Boolean) as string[];
+      do {
+        const response = await youtube.playlistItems.list({
+          part: ['snippet'],
+          playlistId: playlistId,
+          maxResults: 50,
+          pageToken: nextPageToken,
+        });
+
+        if (response.data.items) {
+          allItems = allItems.concat(response.data.items);
+        }
+        nextPageToken = response.data.nextPageToken || undefined;
+      } while (nextPageToken);
+
+      console.log(`[YtMusicService] Fetched ${allItems.length} total items. Fetching video details...`);
+
+      const videoIds = allItems.map(item => item.snippet?.resourceId?.videoId).filter(Boolean) as string[];
 
       if (videoIds.length === 0) return [];
 
-      console.log(`[YtMusicService] Fetching video details for ${videoIds.length} tracks...`);
-      const videoResponse = await youtube.videos.list({
-        part: ['snippet'],
-        id: videoIds,
-      });
-
-      const videos = videoResponse.data.items || [];
+      let allVideos: any[] = [];
+      // YouTube videos.list maxResults is 50, so we must chunk videoIds
+      for (let i = 0; i < videoIds.length; i += 50) {
+        const chunk = videoIds.slice(i, i + 50);
+        const videoResponse = await youtube.videos.list({
+          part: ['snippet'],
+          id: chunk,
+        });
+        if (videoResponse.data.items) {
+          allVideos = allVideos.concat(videoResponse.data.items);
+        }
+      }
       
-      const tracks = items.map((item, index) => {
+      const tracks = allItems.map((item, index) => {
         const videoId = item.snippet?.resourceId?.videoId;
-        const video = videos.find(v => v.id === videoId);
+        const video = allVideos.find(v => v.id === videoId);
         
         return {
           videoId,

@@ -7,11 +7,7 @@ export interface DriftTrack {
     originalIndex: number;
 }
   
-// 1. Filter out high-intensity, jarring tracks completely
-export function filterDriftPool(tracks: DriftTrack[]): DriftTrack[] {
-    const MAXIMUM_INTENSITY_CEILING = 0.65; 
-    return tracks.filter(track => track.intensityScore <= MAXIMUM_INTENSITY_CEILING);
-}
+// Removed filterDriftPool to handle filtering inside the generator function
   
 // 2. The Weighted Distance Function
 function calculateSonicDistance(songA: DriftTrack, songB: DriftTrack) {
@@ -25,15 +21,26 @@ function calculateSonicDistance(songA: DriftTrack, songB: DriftTrack) {
 }
   
 // 3. The Chaining Engine (Builds the Floating Playlist Sequence)
-export function generateDriftPlaylist(rawImportedTracks: DriftTrack[]): DriftTrack[] {
-    // Step A: Purge the disruptive high-intensity tracks
-    let pool = filterDriftPool(rawImportedTracks);
-    if (pool.length === 0) return [];
+export function generateDriftPlaylist(rawImportedTracks: DriftTrack[]) {
+    const MAXIMUM_INTENSITY_CEILING = 0.65; 
+    let pool: DriftTrack[] = [];
+    let harshTracks: DriftTrack[] = [];
+
+    // Step A: Separate the disruptive high-intensity tracks
+    for (const track of rawImportedTracks) {
+        if (track.intensityScore > MAXIMUM_INTENSITY_CEILING) {
+            harshTracks.push(track);
+        } else {
+            pool.push(track);
+        }
+    }
+
+    if (pool.length === 0) return { tracks: [], harshTracks };
   
     let rearrangedPlaylist: DriftTrack[] = [];
     
-    // Step B: Start with a perfect mid-vibe baseline track (around 120 BPM)
-    pool.sort((a, b) => Math.abs(a.estimatedBpm - 120) - Math.abs(b.estimatedBpm - 120));
+    // Step B: Start with the lowest BPM track in the pool as the baseline
+    pool.sort((a, b) => a.estimatedBpm - b.estimatedBpm);
     let currentTrack = pool.shift(); 
     if (currentTrack) {
         rearrangedPlaylist.push(currentTrack);
@@ -57,5 +64,5 @@ export function generateDriftPlaylist(rawImportedTracks: DriftTrack[]): DriftTra
         rearrangedPlaylist.push(currentTrack);
     }
   
-    return rearrangedPlaylist;
+    return { tracks: rearrangedPlaylist, harshTracks };
 }

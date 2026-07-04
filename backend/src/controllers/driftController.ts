@@ -31,9 +31,15 @@ export const driftRearrange = async (req: Request, res: Response) => {
         where: { videoId: track.videoId }
       });
 
-      if (!dbTrack) {
+      const isDefaultFallback = dbTrack && dbTrack.estimatedBpm === 120 && dbTrack.intensityScore === 0.5;
+
+      if (!dbTrack || isDefaultFallback) {
         // Run AI Analysis
         console.log(`[DriftController] Analyzing ${track.title} with Gemini AI...`);
+        
+        // Add a small 1-second delay to help prevent aggressive 429 Rate Limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const analysis = await analyzeTrackMetadata({
           title: track.title,
           artist: track.artist,
@@ -44,15 +50,28 @@ export const driftRearrange = async (req: Request, res: Response) => {
         const intensityScore = analysis?.intensity_score || 0.5;
 
         // Save to DB
-        dbTrack = await prisma.youtubeTrack.create({
-          data: {
-            videoId: track.videoId,
-            title: track.title.substring(0, 255), // truncate if necessary
-            artist: track.artist.substring(0, 255),
-            estimatedBpm,
-            intensityScore
-          }
-        });
+        if (!dbTrack) {
+          dbTrack = await prisma.youtubeTrack.create({
+            data: {
+              videoId: track.videoId,
+              title: track.title.substring(0, 255),
+              artist: track.artist.substring(0, 255),
+              estimatedBpm,
+              intensityScore
+            }
+          });
+        } else {
+          // Update the existing corrupted/fallback record
+          dbTrack = await prisma.youtubeTrack.update({
+            where: { videoId: track.videoId },
+            data: {
+              estimatedBpm,
+              intensityScore,
+              title: track.title.substring(0, 255),
+              artist: track.artist.substring(0, 255),
+            }
+          });
+        }
       }
 
       driftTracks.push({
@@ -67,13 +86,14 @@ export const driftRearrange = async (req: Request, res: Response) => {
 
     // 3. Algorithm Sorting
     console.log(`[DriftController] Running Drift Algorithm on ${driftTracks.length} tracks...`);
-    const rearrangedPlaylist = generateDriftPlaylist(driftTracks);
+    const { tracks: rearrangedPlaylist, harshTracks } = generateDriftPlaylist(driftTracks);
 
     res.json({
       message: 'Playlist rearranged successfully',
       originalCount: driftTracks.length,
-      filteredCount: driftTracks.length - rearrangedPlaylist.length,
-      tracks: rearrangedPlaylist
+      filteredCount: harshTracks.length,
+      tracks: rearrangedPlaylist,
+      harshTracks: harshTracks
     });
 
   } catch (err: any) {
