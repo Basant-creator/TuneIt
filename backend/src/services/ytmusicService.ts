@@ -128,6 +128,60 @@ export class YtMusicService {
   }
 
   /**
+   * Fetches the tracks for a given playlist and gets their tags.
+   */
+  public async getPlaylistTracks(playlistId: string): Promise<any[]> {
+    if (!this.hasTokens) {
+      throw new Error('Unauthorized. No active Google session.');
+    }
+
+    try {
+      const youtube = google.youtube({
+        version: 'v3',
+        auth: this.oauth2Client,
+      });
+
+      console.log(`[YtMusicService] Fetching items for playlist: ${playlistId}...`);
+      const response = await youtube.playlistItems.list({
+        part: ['snippet'],
+        playlistId: playlistId,
+        maxResults: 50,
+      });
+
+      const items = response.data.items || [];
+      const videoIds = items.map(item => item.snippet?.resourceId?.videoId).filter(Boolean) as string[];
+
+      if (videoIds.length === 0) return [];
+
+      console.log(`[YtMusicService] Fetching video details for ${videoIds.length} tracks...`);
+      const videoResponse = await youtube.videos.list({
+        part: ['snippet'],
+        id: videoIds,
+      });
+
+      const videos = videoResponse.data.items || [];
+      
+      const tracks = items.map((item, index) => {
+        const videoId = item.snippet?.resourceId?.videoId;
+        const video = videos.find(v => v.id === videoId);
+        
+        return {
+          videoId,
+          title: item.snippet?.title || 'Unknown Title',
+          artist: item.snippet?.videoOwnerChannelTitle || 'Unknown Artist',
+          tags: video?.snippet?.tags || [],
+          originalIndex: index
+        };
+      });
+
+      return tracks;
+    } catch (err: any) {
+      console.error('[YtMusicService] Error fetching playlist tracks:', err?.message || err);
+      throw err;
+    }
+  }
+
+  /**
    * Checks if a session exists.
    */
   public hasSession(): boolean {
