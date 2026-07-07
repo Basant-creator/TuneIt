@@ -21,6 +21,7 @@ export const driftRearrange = async (req: Request, res: Response) => {
     }
 
     const driftTracks: DriftTrack[] = [];
+    let analyzedCount = 0;
 
     // 2. Process each track
     for (const track of rawTracks) {
@@ -37,8 +38,16 @@ export const driftRearrange = async (req: Request, res: Response) => {
         // Run AI Analysis
         console.log(`[DriftController] Analyzing ${track.title} with Gemini AI...`);
         
-        // Add a small 1-second delay to help prevent aggressive 429 Rate Limits
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Cooldown period: Google Gemini API Free Tier limits to 15 Requests Per Minute (RPM)
+        // We will process 14 tracks quickly, then wait for 60 seconds to reset the quota.
+        if (analyzedCount > 0 && analyzedCount % 14 === 0) {
+          console.log('[DriftController] Rate limit cooldown: waiting 30 seconds to reset quota...');
+          await new Promise(resolve => setTimeout(resolve, 30000));
+        } else if (analyzedCount > 0) {
+          // Small 1-second delay between normal requests to prevent aggressive bursting
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        analyzedCount++;
         
         const analysis = await analyzeTrackMetadata({
           title: track.title,

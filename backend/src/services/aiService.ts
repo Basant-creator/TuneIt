@@ -2,16 +2,23 @@ import { GoogleGenAI } from '@google/genai';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const DRIFT_PROMPT = `
-You are a music analytics engine. Analyze the provided YouTube music title and tags. 
-Estimate the BPM and evaluate the "Sonic Intensity" score.
-Intensity scale guidelines:
-- 0.0 to 0.3: Ambient, dreamy, smooth synth pads, floating (e.g., Resonance by HOME).
-- 0.4 to 0.6: Mid-intensity, steady low-key drums, lo-fi groove, slowed-down chill beats.
-- 0.7 to 1.0: Aggressive, harsh distortion, heavy bass cowbells, loud phonk, frantic percussion.
+const DRIFT_PROMPT = `You are a precise music analytics data daemon. Analyze the provided YouTube track title, channel name, and description tags. 
+Your goal is to estimate the BPM and evaluate a "Sonic Intensity" score.
 
-Return strictly a raw JSON object with keys "estimated_bpm" (integer) and "intensity_score" (float).
-`;
+Intensity scale guidelines:
+- 0.0 to 0.3: Ambient, dreamy, smooth synth pads, floating (e.g., Resonance by HOME, Lofi).
+- 0.4 to 0.6: Mid-intensity, steady low-key drums, lo-fi groove, slowed-down chill beats, commercial pop/r&b.
+- 0.7 to 1.0: Aggressive, harsh distortion, heavy bass cowbells, loud phonk, frantic percussion, metal, gym hip-hop.
+
+Return strictly a raw JSON object with keys "estimated_bpm" (integer) and "intensity_score" (float rounded to two decimal places). Do not include markdown code block formatting.
+
+[Input Sample]:
+Title: "HOME - Resonance"
+Channel: "Electronic Gems"
+Tags: ["chillwave", "synthwave", "retro", "dreamy"]
+
+[Output Sample]:
+{"estimated_bpm": 120, "intensity_score": 0.18}`;
 
 export interface TrackMetadata {
   title: string;
@@ -25,7 +32,7 @@ export interface AIAnalysisResult {
 }
 
 export async function analyzeTrackMetadata(metadata: TrackMetadata): Promise<AIAnalysisResult | null> {
-  const inputStr = `Title: "${metadata.title}", Artist: "${metadata.artist}", Tags: ${JSON.stringify(metadata.tags)}`;
+  const inputStr = `Title: "${metadata.title}"\nChannel: "${metadata.artist}"\nTags: ${JSON.stringify(metadata.tags)}`;
   
   try {
     const response = await ai.models.generateContent({
