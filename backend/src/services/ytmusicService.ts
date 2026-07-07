@@ -128,6 +128,77 @@ export class YtMusicService {
   }
 
   /**
+   * Fetches the tracks for a given playlist and gets their tags.
+   */
+  public async getPlaylistTracks(playlistId: string): Promise<any[]> {
+    if (!this.hasTokens) {
+      throw new Error('Unauthorized. No active Google session.');
+    }
+
+    try {
+      const youtube = google.youtube({
+        version: 'v3',
+        auth: this.oauth2Client,
+      });
+
+      console.log(`[YtMusicService] Fetching items for playlist: ${playlistId}...`);
+      let allItems: any[] = [];
+      let nextPageToken: string | undefined = undefined;
+
+      do {
+        const response = await youtube.playlistItems.list({
+          part: ['snippet'],
+          playlistId: playlistId,
+          maxResults: 50,
+          pageToken: nextPageToken,
+        });
+
+        if (response.data.items) {
+          allItems = allItems.concat(response.data.items);
+        }
+        nextPageToken = response.data.nextPageToken || undefined;
+      } while (nextPageToken);
+
+      console.log(`[YtMusicService] Fetched ${allItems.length} total items. Fetching video details...`);
+
+      const videoIds = allItems.map(item => item.snippet?.resourceId?.videoId).filter(Boolean) as string[];
+
+      if (videoIds.length === 0) return [];
+
+      let allVideos: any[] = [];
+      // YouTube videos.list maxResults is 50, so we must chunk videoIds
+      for (let i = 0; i < videoIds.length; i += 50) {
+        const chunk = videoIds.slice(i, i + 50);
+        const videoResponse = await youtube.videos.list({
+          part: ['snippet'],
+          id: chunk,
+        });
+        if (videoResponse.data.items) {
+          allVideos = allVideos.concat(videoResponse.data.items);
+        }
+      }
+      
+      const tracks = allItems.map((item, index) => {
+        const videoId = item.snippet?.resourceId?.videoId;
+        const video = allVideos.find(v => v.id === videoId);
+        
+        return {
+          videoId,
+          title: item.snippet?.title || 'Unknown Title',
+          artist: item.snippet?.videoOwnerChannelTitle || 'Unknown Artist',
+          tags: video?.snippet?.tags || [],
+          originalIndex: index
+        };
+      });
+
+      return tracks;
+    } catch (err: any) {
+      console.error('[YtMusicService] Error fetching playlist tracks:', err?.message || err);
+      throw err;
+    }
+  }
+
+  /**
    * Checks if a session exists.
    */
   public hasSession(): boolean {

@@ -1,0 +1,115 @@
+import { Request, Response } from 'express';
+import { YtMusicService } from '../services/ytmusicService';
+import { analyzeTrackMetadata } from '../services/aiService';
+import { generateDriftPlaylist, DriftTrack } from '../utils/driftAlgorithm';
+import prisma from '../config/db';
+
+export const driftRearrange = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Playlist ID is required' });
+  }
+
+  try {
+    const ytmusicService = YtMusicService.getInstance();
+    
+    // 1. Fetch raw tracks from YouTube API
+    const rawTracks = await ytmusicService.getPlaylistTracks(id);
+    if (rawTracks.length === 0) {
+      return res.status(404).json({ error: 'No tracks found in the playlist' });
+    }
+
+    const driftTracks: DriftTrack[] = [];
+    let analyzedCount = 0;
+
+    // 2. Process each track
+    for (const track of rawTracks) {
+      if (!track.videoId) continue;
+
+      // Check cache first
+      let dbTrack = await prisma.youtubeTrack.findUnique({
+        where: { videoId: track.videoId }
+      });
+
+      const isDefaultFallback = dbTrack && dbTrack.estimatedBpm === 120 && dbTrack.intensityScore === 0.5;
+
+      if (!dbTrack || isDefaultFallback) {
+        // Run AI Analysis
+        console.log(`[DriftController] Analyzing ${track.title} with Gemini AI...`);
+        
+        // Cooldown period: Google Gemini API Free Tier limits to 15 Requests Per Minute (RPM)
+        // We will process 14 tracks quickly, then wait for 60 seconds to reset the quota.
+        if (analyzedCount > 0 && analyzedCount % 14 === 0) {
+          console.log('[DriftController] Rate limit cooldown: waiting 30 seconds to reset quota...');
+          await new Promise(resolve => setTimeout(resolve, 30000));
+        } else if (analyzedCount > 0) {
+          // Small 1-second delay between normal requests to prevent aggressive bursting
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        analyzedCount++;
+        
+        const analysis = await analyzeTrackMetadata({
+          title: track.title,
+          artist: track.artist,
+          tags: track.tags
+        });
+
+        const estimatedBpm = analysis?.estimated_bpm || 120; // Default fallback
+        const intensityScore = analysis?.intensity_score || 0.5;
+
+        // Save to DB
+        if (!dbTrack) {
+          dbTrack = await prisma.youtubeTrack.create({
+            data: {
+              videoId: track.videoId,
+              title: track.title.substring(0, 255),
+              artist: track.artist.substring(0, 255),
+              estimatedBpm,
+              intensityScore
+            }
+          });
+        } else {
+          // Update the existing corrupted/fallback record
+          dbTrack = await prisma.youtubeTrack.update({
+            where: { videoId: track.videoId },
+            data: {
+              estimatedBpm,
+              intensityScore,
+              title: track.title.substring(0, 255),
+              artist: track.artist.substring(0, 255),
+            }
+          });
+        }
+      }
+
+      driftTracks.push({
+        videoId: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        estimatedBpm: dbTrack.estimatedBpm,
+        intensityScore: dbTrack.intensityScore,
+        originalIndex: track.originalIndex
+      });
+    }
+
+    // 3. Algorithm Sorting
+    console.log(`[DriftController] Running Drift Algorithm on ${driftTracks.length} tracks...`);
+    const { tracks: rearrangedPlaylist, harshTracks } = generateDriftPlaylist(driftTracks);
+
+    res.json({
+      message: 'Playlist rearranged successfully',
+      originalCount: driftTracks.length,
+      filteredCount: harshTracks.length,
+      tracks: rearrangedPlaylist,
+      harshTracks: harshTracks
+    });
+
+  } catch (err: any) {
+    console.error('[DriftController] Error during drift rearrangement:', err?.message || err);
+    res.status(500).json({
+      error: 'Failed to apply Drift algorithm',
+      details: err?.message || err
+    });
+  }
+};
