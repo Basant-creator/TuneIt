@@ -73,3 +73,23 @@ export const getPlaylists = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getPlaylistTracks = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Playlist ID is required' });
+  }
+
+  try {
+    const ytmusicService = YtMusicService.getInstance();
+    const tracks = await ytmusicService.getPlaylistTracks(id);
+    res.json({ tracks });
+  } catch (err: any) {
+    console.error(`[YtMusicController] Error fetching tracks for playlist ${id}:`, err?.message || err);
+    const statusCode = err?.message?.includes('session') || err?.message?.includes('Unauthorized') ? 401 : 500;
+    res.status(statusCode).json({
+      error: 'Failed to fetch playlist tracks',
+      details: err?.message || err,
+    });
+  }
+};
