@@ -2,16 +2,11 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import {
-  ArrowRight,
-  Sparkles,
-  Volume2,
-  ListRestart,
-  Heart,
-} from 'lucide-react';
+import { ArrowRight, Sparkles, Volume2, ListRestart, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/utils/cn';
+import { chaoticTracks, optimizedTracks, flowModes } from '@/data/homeData';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { DoodleElement } from '@/components/DoodleElement';
@@ -22,136 +17,7 @@ import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
 import { FlowSandbox } from '@/components/FlowSandbox';
 
-// Mock songs list representing chaotic order
-const chaoticTracks = [
-  {
-    id: 't1',
-    name: 'Strobe',
-    artist: 'deadmau5',
-    bpm: 128,
-    key: '10A',
-    energy: 0.72,
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=120',
-  },
-  {
-    id: 't2',
-    name: 'Innerbloom',
-    artist: 'RÜFÜS DU SOL',
-    bpm: 122,
-    key: '8A',
-    energy: 0.58,
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=120',
-  },
-  {
-    id: 't3',
-    name: 'Opus',
-    artist: 'Eric Prydz',
-    bpm: 126,
-    key: '8B',
-    energy: 0.84,
-    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=120',
-  },
-  {
-    id: 't4',
-    name: 'Language',
-    artist: 'Porter Robinson',
-    bpm: 128,
-    key: '8B',
-    energy: 0.89,
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=120',
-  },
-];
 
-// Mock songs list rearranged into optimized journey
-const optimizedTracks = [
-  {
-    id: 't2',
-    name: 'Innerbloom',
-    artist: 'RÜFÜS DU SOL',
-    bpm: 122,
-    key: '8A',
-    energy: 0.58,
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=120',
-  },
-  {
-    id: 't3',
-    name: 'Opus',
-    artist: 'Eric Prydz',
-    bpm: 126,
-    key: '8B',
-    energy: 0.84,
-    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=120',
-  },
-  {
-    id: 't4',
-    name: 'Language',
-    artist: 'Porter Robinson',
-    bpm: 128,
-    key: '8B',
-    energy: 0.89,
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=120',
-  },
-  {
-    id: 't1',
-    name: 'Strobe',
-    artist: 'deadmau5',
-    bpm: 128,
-    key: '10A',
-    energy: 0.72,
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=120',
-  },
-];
-
-const flowModes = [
-  {
-    id: 'bu',
-    emoji: '🚀',
-    title: 'Rise',
-    description: 'Start with a strut, end with a march. This journey escalates through gritty confidence and anthemic tension, steadily charging your emotional battery until you feel completely invincible.',
-    color: 'pink' as const,
-    features: [
-      'Philosophy: A deliberate ascent to self-assured power',
-      'Vibe: Anthemic, Grit, Swagger',
-      'Purpose: Gradual momentum & rise',
-    ],
-  },
-  {
-    id: 'df',
-    emoji: '🌊',
-    title: 'Drift',
-    description: 'Drift away into a dreamlike dreamscape. This journey glides smoothly through chilled synthwave, lo-fi haze, and euphoric house, ensuring there are no sudden drops to break your trance.',
-    color: 'blue' as const,
-    features: [
-      'Philosophy: Continuous state of atmospheric immersion',
-      'Vibe: Dreamlike, Ambient, Fluid',
-      'Purpose: Smooth transitions, no drops',
-    ],
-  },
-  {
-    id: 'ph',
-    emoji: '😈',
-    title: 'Unhinged',
-    description: 'Disregard genre borders. This experience bounces between breezy indie-pop, psychedelic rock, swaggering hip-hop, and raw, classic diss tracks to deliver a satisfyingly unpredictable thrill.',
-    color: 'orange' as const,
-    features: [
-      'Philosophy: A wild roller coaster of style & surprise',
-      'Vibe: Unpredictable, Defiant, Playful',
-      'Purpose: Satisfying system shocks',
-    ],
-  },
-  {
-    id: 'cm',
-    emoji: '🎬',
-    title: 'Frame',
-    description: 'A sweeping sequence of high-drama hooks and timeless grooves, paced to evoke distinct acts of a movie—from tense setups to soaring resolution.',
-    color: 'white' as const,
-    features: [
-      'Philosophy: Walking through legendary movie scenes',
-      'Vibe: Cinematic, Theatrical, Soulful',
-      'Purpose: Capturing high-drama arcs',
-    ],
-  },
-];
 
 export default function Home() {
   const router = useRouter();
@@ -267,6 +133,9 @@ export default function Home() {
         <div className="absolute bottom-16 left-12 w-14 h-14 text-brand-pink opacity-20 pointer-events-none hidden md:block">
           <DoodleElement type="musicNote" />
         </div>
+        <div className="absolute top-1/3 right-[5%] w-24 h-24 opacity-90 pointer-events-none hidden lg:block z-20 transform -rotate-12 hover:scale-110 transition-transform duration-300">
+          <img src="/graphics/Happy cup.svg" alt="Happy Cup" className="w-full h-full drop-shadow-md" />
+        </div>
 
         {/* Hero Left Content */}
         <div className="lg:col-span-6 space-y-6 text-left relative">
@@ -340,6 +209,9 @@ export default function Home() {
         {/* Absolute annotations */}
         <div className="absolute top-12 right-12 w-16 h-16 text-brand-yellow opacity-45 pointer-events-none hidden md:block">
           <DoodleElement type="sparkle" />
+        </div>
+        <div className="absolute top-28 left-6 w-40 h-40 opacity-25 pointer-events-none hidden lg:block z-0 transform -rotate-6">
+          <img src="/graphics/Spongebob-doodlebob-black 1.svg" alt="Doodlebob" className="w-full h-full" />
         </div>
 
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
@@ -612,6 +484,7 @@ export default function Home() {
             <div className="w-12 h-12 rounded-xl neo-border bg-brand-pink text-white flex items-center justify-center font-black text-xl shadow-sm mb-4 transform -rotate-6">
               1
             </div>
+            <img src="/graphics/computer.svg" alt="Computer" className="absolute top-4 right-4 w-20 h-20 opacity-90 transform rotate-6 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Import Playlist</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
               Connect your Spotify in one click. We analyze the Camelot harmonic keys, BPM tempos, and energy levels of your existing tracks.
@@ -623,6 +496,7 @@ export default function Home() {
             <div className="w-12 h-12 rounded-xl neo-border bg-brand-blue text-black flex items-center justify-center font-black text-xl shadow-sm mb-4 transform rotate-3">
               2
             </div>
+            <img src="/graphics/Group (1).svg" alt="Process" className="absolute top-4 right-4 w-16 h-16 opacity-90 transform -rotate-3 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Choose Flow Curve</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
               Select one of our 5 standard journey curves or let our engine recommend the best starting track to kick off the progression.
@@ -634,6 +508,7 @@ export default function Home() {
             <div className="w-12 h-12 rounded-xl neo-border bg-brand-yellow text-black flex items-center justify-center font-black text-xl shadow-sm mb-4 transform -rotate-3">
               3
             </div>
+            <img src="/graphics/Paper plane.svg" alt="Paper plane" className="absolute top-4 right-4 w-16 h-16 opacity-90 transform rotate-12 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Export Journey</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
               Save the newly structured playlist back to your Spotify profile instantly. We never alter your original song files.

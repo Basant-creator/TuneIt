@@ -8,6 +8,7 @@ import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { SpinningBlocks } from '@/components/SpinningBlocks';
 import { cn } from '@/utils/cn';
+import { flowModes } from '@/data/homeData';
 
 interface Track {
   videoId: string;
@@ -16,14 +17,8 @@ interface Track {
   estimatedBpm?: number;
   intensityScore?: number;
   originalIndex?: number;
+  displayIndex?: number;
 }
-
-const flowModes = [
-  { id: 'bu', emoji: '🚀', title: 'Rise', desc: 'Anthemic, Grit, Swagger', color: 'pink' },
-  { id: 'df', emoji: '🌊', title: 'Drift', desc: 'Dreamlike, Ambient, Fluid', color: 'blue' },
-  { id: 'ph', emoji: '😈', title: 'Unhinged', desc: 'Unpredictable, Defiant', color: 'orange' },
-  { id: 'cm', emoji: '🎬', title: 'Frame', desc: 'Cinematic, Theatrical', color: 'white' },
-];
 
 export default function PlaylistModifierPage() {
   const router = useRouter();

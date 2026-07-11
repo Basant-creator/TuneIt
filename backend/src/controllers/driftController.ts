@@ -3,6 +3,15 @@ import { YtMusicService } from '../services/ytmusicService';
 import { analyzeTrackMetadata } from '../services/aiService';
 import { generateDriftPlaylist, DriftTrack } from '../utils/driftAlgorithm';
 import prisma from '../config/db';
+import Bottleneck from 'bottleneck';
+
+const limiter = new Bottleneck({
+  reservoir: 14, // 14 tokens
+  reservoirRefreshAmount: 14,
+  reservoirRefreshInterval: 60000, // every 60 seconds
+  maxConcurrent: 1,
+  minTime: 1000 // 1 second minimum between requests
+});
 
 export const driftRearrange = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -21,7 +30,6 @@ export const driftRearrange = async (req: Request, res: Response) => {
     }
 
     const driftTracks: DriftTrack[] = [];
-    let analyzedCount = 0;
 
     // 2. Process each track
     for (const track of rawTracks) {
@@ -38,22 +46,11 @@ export const driftRearrange = async (req: Request, res: Response) => {
         // Run AI Analysis
         console.log(`[DriftController] Analyzing ${track.title} with Gemini AI...`);
         
-        // Cooldown period: Google Gemini API Free Tier limits to 15 Requests Per Minute (RPM)
-        // We will process 14 tracks quickly, then wait for 60 seconds to reset the quota.
-        if (analyzedCount > 0 && analyzedCount % 14 === 0) {
-          console.log('[DriftController] Rate limit cooldown: waiting 30 seconds to reset quota...');
-          await new Promise(resolve => setTimeout(resolve, 30000));
-        } else if (analyzedCount > 0) {
-          // Small 1-second delay between normal requests to prevent aggressive bursting
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        analyzedCount++;
-        
-        const analysis = await analyzeTrackMetadata({
+        const analysis = await limiter.schedule(() => analyzeTrackMetadata({
           title: track.title,
           artist: track.artist,
           tags: track.tags
-        });
+        }));
 
         const estimatedBpm = analysis?.estimated_bpm || 120; // Default fallback
         const intensityScore = analysis?.intensity_score || 0.5;
