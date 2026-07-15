@@ -33,6 +33,18 @@
   border: 3px solid #000000;
 }
 
+.neo-border-sm {
+  border: 2px solid #000000;
+}
+
+.neo-border-xs {
+  border: 1px solid #000000;
+}
+
+.neo-border-b {
+  border-bottom: 3px solid #000000;
+}
+
 .neo-shadow {
   box-shadow: 6px 6px 0px 0px #000000;
 }

@@ -28,5 +28,6 @@ export const env = {
   spotifyRedirectUri: process.env.SPOTIFY_REDIRECT_URI || '',
   nextAuthSecret: process.env.NEXTAUTH_SECRET || '',
   appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001',
   isProduction: process.env.NODE_ENV === 'production',
 };

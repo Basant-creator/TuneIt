@@ -7,8 +7,6 @@ import { Sparkles, Check, Info } from 'lucide-react';
 import { Track, PRESET_TRACKS } from '@/data/presetTracks';
 import { getTransitionPenalty, getTransitionScore, getEffectiveBpm } from '@/utils/flowScoring';
 
-
-
 interface FlowSandboxProps {
   modeId: string; // 'bu' | 'df' | 'ph' | 'cm'
   selectedTrackIds: string[];
@@ -175,7 +173,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
           <h4 className="text-[11px] font-black uppercase tracking-tight">1. Build Your Mix (Select 5)</h4>
           <span className={cn(
             "neo-border px-1.5 py-0.5 rounded text-[9px] font-black uppercase font-mono select-none",
-            selectedTrackIds.length === 5 ? "bg-brand-pink text-white border-black animate-none" : "bg-brand-yellow text-black border-black animate-pulse"
+            selectedTrackIds.length === 5 ? "bg-brand-pink text-white animate-none" : "bg-brand-yellow text-black animate-pulse"
           )}>
             Selected: {selectedTrackIds.length}/5
           </span>
@@ -193,28 +191,30 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                 onClick={() => toggleTrack(track.id)}
                 disabled={isDisabled}
                 className={cn(
-                  "neo-border p-1 rounded-lg text-left flex gap-1 items-center transition-all relative overflow-hidden select-none",
+                  "neo-border p-1 rounded-lg text-left flex gap-1 items-center transition-all relative overflow-hidden select-none w-full",
                   isSelected 
-                    ? "bg-brand-yellow border-black scale-[0.98] translate-y-[1px]" 
+                    ? "bg-brand-yellow scale-[0.98] translate-y-[1px]" 
                     : isDisabled 
-                      ? "bg-slate-50 border-slate-300 opacity-40 cursor-not-allowed" 
-                      : "bg-white border-black hover:translate-y-[-1px] hover:shadow-sm"
+                      ? "bg-slate-50 border-slate-300! opacity-40 cursor-not-allowed" 
+                      : "bg-white hover:translate-y-[-1px] hover:shadow-sm"
                 )}
               >
                 {/* Image */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={track.coverUrl} alt={track.name} className="w-6.5 h-6.5 rounded border border-black shrink-0 object-cover" />
-                <div className="min-w-0 flex-1">
-                  <p className="font-extrabold text-[8.5px] truncate leading-tight">{track.name}</p>
-                  <div className="flex justify-between items-center mt-0.5">
-                    <span className="text-[7.5px] font-mono font-bold text-slate-500 truncate">{track.artist}</span>
-                  </div>
-                </div>
+                <img src={track.coverUrl} alt={track.name} className="w-6.5 h-6.5 rounded neo-border-xs shrink-0 object-cover" />
+                
+                {/* HTML Semantic and accessibility fix: Use span block wrappers rather than divs/ps inside buttons */}
+                <span className="min-w-0 flex-1 block">
+                  <span className="font-extrabold text-[8.5px] truncate leading-tight block">{track.name}</span>
+                  <span className="flex justify-between items-center mt-0.5">
+                    <span className="text-[7.5px] font-mono font-bold text-slate-500 truncate block">{track.artist}</span>
+                  </span>
+                </span>
 
                 {isSelected && (
-                  <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-black text-brand-yellow rounded-full border border-black flex items-center justify-center">
+                  <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-black text-brand-yellow rounded-full flex items-center justify-center neo-border-xs">
                     <Check className="w-1.5 h-1.5 stroke-[4px]" />
-                  </div>
+                  </span>
                 )}
               </button>
             );
@@ -247,9 +247,9 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
               exit={{ opacity: 0 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <div className="flex flex-col bg-[#E8F0FE] border-3 border-black rounded-2xl p-3 relative overflow-hidden neo-shadow h-full min-h-0 justify-between">
+              <div className="flex flex-col bg-[#E8F0FE] neo-border rounded-2xl p-3 relative overflow-hidden neo-shadow h-full min-h-0 justify-between">
                 {/* Header */}
-                <div className="border-b-3 border-black pb-1.5 mb-2 flex justify-between items-center select-none shrink-0">
+                <div className="neo-border-b pb-1.5 mb-2 flex justify-between items-center select-none shrink-0">
                   <span className="text-[10px] font-black uppercase text-brand-blue flex items-center gap-1 font-mono">
                     {modeId === 'bu' && "🚀 Rise Curve Sequence"}
                     {modeId === 'df' && "🌊 Drift Flow Sequence"}
@@ -257,7 +257,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                     {modeId === 'cm' && "🎬 Frame Narrative Sequence"}
                   </span>
                   {stats && (
-                    <span className="bg-brand-blue text-black border-2 border-black rounded px-1.5 py-0.5 text-[8.5px] font-black font-mono">
+                    <span className="bg-brand-blue text-black neo-border-sm rounded px-1.5 py-0.5 text-[8.5px] font-black font-mono">
                       Journey Match: {stats.flowScore}%
                     </span>
                   )}
@@ -286,14 +286,14 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                         <motion.div
                           layout
                           transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                          className="bg-white border-2 border-black p-1.5 rounded-lg flex items-center justify-between text-xs neo-shadow-sm select-none"
+                          className="bg-white neo-border-sm p-1.5 rounded-lg flex items-center justify-between text-xs neo-shadow-sm select-none"
                         >
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="w-4 h-4 rounded bg-black text-white border border-black flex items-center justify-center font-black font-mono text-[8px] shrink-0">
+                            <span className="w-4 h-4 rounded bg-black text-white neo-border-xs flex items-center justify-center font-black font-mono text-[8px] shrink-0">
                               {idx + 1}
                             </span>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={track.coverUrl} alt={track.name} className="w-6.5 h-6.5 rounded border-2 border-black shrink-0 object-cover" />
+                            <img src={track.coverUrl} alt={track.name} className="w-6.5 h-6.5 rounded neo-border-sm shrink-0 object-cover" />
                             <div className="min-w-0 flex-1 pr-2">
                               <p className="font-black truncate text-[10px] leading-tight text-black">{track.name}</p>
                               <p className="font-bold text-[8px] text-slate-500 truncate leading-none mt-0.5">{track.artist}</p>
@@ -301,7 +301,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                           </div>
 
                           <div className="flex items-center gap-2.5 shrink-0">
-                            <span className="font-mono font-black text-[8px] uppercase bg-brand-yellow border-2 border-black px-1.5 py-0.5 rounded-md select-none shrink-0 text-black">
+                            <span className="font-mono font-black text-[8px] uppercase bg-brand-yellow neo-border-sm px-1.5 py-0.5 rounded-md select-none shrink-0 text-black">
                               {track.role}
                             </span>
 
@@ -312,7 +312,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                                   {hasNext ? `${transScore}%` : "🏁 END"}
                                 </span>
                               </div>
-                              <div className="w-full h-1.5 border-2 border-black rounded bg-slate-100 overflow-hidden relative">
+                              <div className="w-full h-1.5 neo-border-sm rounded bg-slate-100 overflow-hidden relative">
                                 <div
                                   className={cn("h-full border-r border-black", scoreColor)}
                                   style={{ width: `${hasNext ? transScore : 100}%` }}
@@ -338,7 +338,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
 
                 {/* Score Summary & Feedback */}
                 {stats && (
-                  <div className="mt-2.5 border-2 border-black bg-white rounded-lg p-2 neo-shadow-sm select-none shrink-0">
+                  <div className="mt-2.5 neo-border-sm bg-white rounded-lg p-2 neo-shadow-sm select-none shrink-0">
                     <p className="text-[9px] font-bold leading-normal text-slate-800 mb-2">
                       {stats.feedbackMessage} <span className="font-black text-brand-pink">{stats.concludingSentence}</span>
                     </p>
@@ -350,7 +350,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                             <span>{metric.name}</span>
                             <span className="text-black">{metric.value}%</span>
                           </div>
-                          <div className="w-full h-1.5 border border-black rounded bg-slate-100 overflow-hidden relative">
+                          <div className="w-full h-1.5 neo-border-xs rounded bg-slate-100 overflow-hidden relative">
                             <div
                               className="h-full bg-brand-pink border-r border-black"
                               style={{ width: `${metric.value}%` }}

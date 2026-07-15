@@ -83,6 +83,8 @@ export const flowModes = [
     title: 'Rise',
     description: 'Start with a strut, end with a march. This journey escalates through gritty confidence and anthemic tension, steadily charging your emotional battery until you feel completely invincible.',
     color: 'pink' as const,
+    bgClass: 'bg-brand-pink text-white',
+    svgFillColor: 'var(--brand-pink)',
     features: [
       'Philosophy: A deliberate ascent to self-assured power',
       'Vibe: Anthemic, Grit, Swagger',
@@ -96,6 +98,8 @@ export const flowModes = [
     title: 'Drift',
     description: 'Drift away into a dreamlike dreamscape. This journey glides smoothly through chilled synthwave, lo-fi haze, and euphoric house, ensuring there are no sudden drops to break your trance.',
     color: 'blue' as const,
+    bgClass: 'bg-brand-blue text-black',
+    svgFillColor: 'var(--brand-blue)',
     features: [
       'Philosophy: Continuous state of atmospheric immersion',
       'Vibe: Dreamlike, Ambient, Fluid',
@@ -109,6 +113,8 @@ export const flowModes = [
     title: 'Unhinged',
     description: 'Disregard genre borders. This experience bounces between breezy indie-pop, psychedelic rock, swaggering hip-hop, and raw, classic diss tracks to deliver a satisfyingly unpredictable thrill.',
     color: 'orange' as const,
+    bgClass: 'bg-brand-orange text-white',
+    svgFillColor: 'var(--brand-orange)',
     features: [
       'Philosophy: A wild roller coaster of style & surprise',
       'Vibe: Unpredictable, Defiant, Playful',
@@ -122,6 +128,8 @@ export const flowModes = [
     title: 'Frame',
     description: 'A sweeping sequence of high-drama hooks and timeless grooves, paced to evoke distinct acts of a movie—from tense setups to soaring resolution.',
     color: 'white' as const,
+    bgClass: 'bg-brand-yellow text-black',
+    svgFillColor: 'var(--brand-yellow)',
     features: [
       'Philosophy: Walking through legendary movie scenes',
       'Vibe: Cinematic, Theatrical, Soulful',
