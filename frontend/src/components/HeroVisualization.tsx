@@ -83,7 +83,7 @@ export function HeroVisualization() {
     <div className="w-full flex flex-col items-center select-none">
       
       {/* Interactive Showcase Sandbox */}
-      <div className="w-full max-w-xl h-[420px] bg-white neo-border neo-shadow-lg rounded-3xl relative overflow-hidden flex flex-col items-center justify-center p-6 bg-[radial-gradient(#e5e7eb_1.5px,transparent_1.5px)] [background-size:16px_16px]">
+      <div className="w-full max-w-xl h-[420px] bg-white neo-border neo-shadow-lg rounded-3xl relative overflow-hidden flex flex-col items-center justify-center p-6">
         
         {/* State Label Sticker */}
         <span className={cn(

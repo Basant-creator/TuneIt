@@ -354,34 +354,41 @@ export default function Home() {
 
                     {/* Left Column: White Neo-Brutalist Card */}
                     <div className="lg:col-span-5 flex flex-col justify-center">
-                      <div className="bg-white text-black neo-border neo-shadow-lg rounded-3xl p-6 sm:p-8 flex flex-col justify-between w-full max-w-lg min-h-[460px] hover:translate-y-[-2px] transition-all">
+                      <div className="bg-white text-black neo-border neo-shadow-lg rounded-3xl p-6 sm:p-8 flex flex-col justify-between w-full max-w-lg min-h-[300px] hover:translate-y-[-2px] transition-all relative overflow-visible">
 
-                        {/* Centralized styling: replaced border-b-3 border-black with neo-border-b */}
-                        <div className="flex items-center justify-between neo-border-b pb-4 mb-4 select-none">
-                          <span className="neo-border px-3 py-1 text-xs font-black uppercase rounded-lg bg-black text-white">
-                            FLOW ARCHETYPE 0{idx + 1}
-                          </span>
+                        <div className="flex items-center justify-between mb-6 relative z-10">
+                          <div className="flex items-center gap-3.5">
+                            {mode.id === 'bu' ? (
+                              <div className="w-12 h-12 flex-shrink-0 relative">
+                                <div className="absolute top-[-80px] left-[-55px] w-56 h-56 z-20 pointer-events-none select-none transform -rotate-12">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src="/graphics/ShinyHappyWeirdPoses3.svg"
+                                    alt="Shiny Happy Weird Poses"
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-xl neo-border bg-brand-yellow text-black flex items-center justify-center text-2xl shadow-sm transform -rotate-6 select-none shrink-0">
+                                {mode.emoji}
+                              </div>
+                            )}
+                            <h3 className={cn(
+                              "text-3xl sm:text-4xl font-black uppercase tracking-tight",
+                              mode.id === 'bu' && "pl-[80px]"
+                            )}>
+                              {mode.title}
+                            </h3>
+                          </div>
                           {selectedFlow === mode.id && (
-                            <span className="text-xs font-mono font-black text-brand-pink uppercase tracking-wide flex items-center gap-1">
+                            <span className="text-xs font-mono font-black text-brand-pink uppercase tracking-wide flex items-center gap-1 shrink-0">
                               ✦ Active
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3.5 mb-4">
-                          <div className="w-12 h-12 rounded-xl neo-border bg-brand-yellow text-black flex items-center justify-center text-2xl shadow-sm transform -rotate-6 select-none shrink-0">
-                            {mode.emoji}
-                          </div>
-                          <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
-                            {mode.title}
-                          </h3>
-                        </div>
-
-                        <p className="text-xs sm:text-sm font-bold font-mono text-slate-700 leading-relaxed mb-6">
-                          {mode.description}
-                        </p>
-
-                        <div className="space-y-3 font-mono text-xs font-black mb-6">
+                        <div className="space-y-3 font-mono text-xs font-black mb-6 relative z-10">
                           {mode.features.map((feature, fIdx) => (
                             /* Centralized styling: replaced border-2 border-black with neo-border-sm */
                             <div key={fIdx} className="flex items-center gap-2 bg-slate-50 neo-border-sm rounded-lg p-2.5 shadow-sm">
@@ -397,7 +404,7 @@ export default function Home() {
                         <button
                           onClick={() => setSelectedFlow(mode.id)}
                           className={cn(
-                            "w-full py-3 neo-border rounded-xl font-black uppercase text-xs tracking-wider transition-all select-none",
+                            "w-full py-3 neo-border rounded-xl font-black uppercase text-xs tracking-wider transition-all select-none relative z-10",
                             selectedFlow === mode.id
                               ? "bg-black text-white translate-y-[2px] shadow-none"
                               : "bg-brand-yellow text-black hover:translate-y-[-2px] hover:shadow-md active:translate-y-[2px]"
@@ -412,18 +419,9 @@ export default function Home() {
                     {/* Right Column: Doodle Canvas container */}
                     {/* Centralized styling: replaced border-3 border-black with neo-border */}
                     <div className="lg:col-span-7 h-full w-full flex items-center justify-center relative min-h-[300px] lg:min-h-0">
-                      <div className="w-full h-full rounded-3xl neo-border neo-shadow-lg bg-white relative overflow-hidden bg-[radial-gradient(#cbd5e1_1.5px,transparent_1.5px)] [background-size:16px_16px] p-6 flex flex-col justify-between">
+                      <div className="w-full h-full rounded-3xl neo-border neo-shadow-lg bg-white relative overflow-hidden p-6 flex flex-col">
 
-                        <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-3 select-none">
-                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
-                            Viewport Canvas // 0{idx + 1}
-                          </span>
-                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
-                            Flow Sandbox ✦
-                          </span>
-                        </div>
-
-                        <div className="flex-1 mt-3 overflow-hidden flex flex-col justify-between">
+                        <div className="flex-1 overflow-hidden flex flex-col">
                           <FlowSandbox
                             modeId={mode.id}
                             selectedTrackIds={selectedTrackIdsByMode[mode.id] || []}
@@ -434,15 +432,6 @@ export default function Home() {
                               }));
                             }}
                           />
-                        </div>
-
-                        <div className="flex items-center justify-between select-none">
-                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
-                            tuneit.labs/modes
-                          </span>
-                          <span className="font-mono text-[9px] font-black uppercase text-slate-400">
-                            {mode.title}
-                          </span>
                         </div>
 
                       </div>
