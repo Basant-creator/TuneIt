@@ -25,7 +25,7 @@ export function CTASection() {
         
         {/* Playful top note sticker */}
         <Sticker color="yellow" rotation={-3} className="mb-6">
-          🔥 NO MORE BAD TRANSITIONS!
+          NO MORE BAD TRANSITIONS!
         </Sticker>
 
         {/* Headline */}

@@ -121,3 +121,64 @@ h2, h3, h4, h5, h6 {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* TUNE IT Text Logo Styles */
+.logo-container {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-heading), 'Archivo Black', sans-serif;
+  font-weight: 900; /* Same bold/black weight as the tagline */
+  font-size: 26px; /* Scaled down from 80px to fit navbar */
+  text-transform: uppercase;
+  letter-spacing: -0.06em; /* Tight tracking */
+  user-select: none;
+}
+
+.text-tune {
+  color: #000000; /* Use black since navbar is white */
+  padding-right: 2px;
+  z-index: 1;
+}
+
+.badge-it {
+  background-color: var(--brand-orange);
+  color: #000000;
+  border: 3px solid #000000;
+  padding: 0 8px;
+  margin-left: -2px; /* Pulls it tighter into the E */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px; /* Scaled down to fit text height */
+  box-shadow: 3px 3px 0px #000000; /* Neo-Brutalist shadow */
+  position: relative;
+  z-index: 2;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 4px;
+}
+
+.bolt-wrapper {
+  position: relative;
+  margin-left: -5px; /* Overlaps the IT badge */
+  z-index: 3;
+  display: flex;
+  align-items: center;
+}
+
+.lightning-bolt {
+  width: 16px;
+  height: auto;
+  fill: var(--brand-yellow);
+  filter: drop-shadow(2px 2px 0px #000000);
+  transform: rotate(10deg);
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.logo-container:hover .lightning-bolt {
+  transform: rotate(10deg) scale(1.2);
+}
+
+.logo-container:hover .badge-it {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #000000;
+}

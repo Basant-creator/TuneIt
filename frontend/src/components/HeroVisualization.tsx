@@ -90,7 +90,7 @@ export function HeroVisualization() {
           'absolute top-4 left-4 neo-border px-3 py-1 text-xs font-black uppercase rounded-lg shadow-sm z-30 transition-colors',
           flowFixed ? 'bg-brand-blue text-black' : 'bg-brand-orange text-white'
         )}>
-          {flowFixed ? '✨ Flow Fixed!' : '⚠️ Chaotic Arrangement'}
+          {flowFixed ? 'Flow Fixed!' : 'Chaotic Arrangement'}
         </span>
 
         {/* Centerpiece Song Sequence Shell */}
@@ -213,7 +213,7 @@ export function HeroVisualization() {
           ) : (
             <>
               <Shuffle className="w-5 h-5 stroke-[3px] animate-spin-slow" />
-              Fix Playlist Flow ⚡
+              Fix Playlist Flow
             </>
           )}
         </NeoButton>

@@ -49,7 +49,7 @@ export function PlaylistCard({
             isChaotic ? 'bg-brand-orange text-white' : 'bg-brand-yellow text-black'
           )}
         >
-          {isChaotic ? '⚠️ Chaotic Order' : '⚡ Optimized Journey'}
+          {isChaotic ? 'Chaotic Order' : 'Optimized Journey'}
         </span>
         
         {!isChaotic && (
@@ -177,7 +177,7 @@ export function PlaylistCard({
           onClick={onFixFlow}
           className="neo-border neo-shadow-sm mt-6 w-full bg-brand-yellow hover:bg-brand-yellow/90 text-black font-extrabold uppercase py-3 rounded-xl transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_#000000]"
         >
-          Fix Playlist Flow ⚡
+          Fix Playlist Flow
         </button>
       )}
     </div>

@@ -16,6 +16,7 @@ import { EnergyGraph } from '@/components/EnergyGraph';
 import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
 import { FlowSandbox } from '@/components/FlowSandbox';
+import { TextLogo } from '@/components/TextLogo';
 import { env } from '@/lib/env';
 
 export default function Home() {
@@ -85,14 +86,8 @@ export default function Home() {
       {/* 1. STYLISH NAVBAR */}
       {/* Centralized styling: replaced border-b-3 border-black with unified neo-border-b class */}
       <header className="w-full py-5 px-6 md:px-12 neo-border-b bg-white flex items-center justify-between sticky top-0 z-50 select-none">
-        <div className="flex items-center gap-2">
-          {/* Centralized styling: replaced border-2 border-black with neo-border-sm */}
-          <div className="w-10 h-10 rounded-xl bg-brand-pink neo-border-sm flex items-center justify-center shadow-sm transform -rotate-3 shrink-0">
-            <Volume2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-black tracking-tight uppercase font-heading select-none">
-            TuneIt
-          </span>
+        <div className="flex items-center">
+          <TextLogo />
         </div>
 
         <nav className="hidden md:flex items-center gap-8 font-mono font-black text-sm uppercase">
@@ -113,13 +108,13 @@ export default function Home() {
                 />
               )}
               <span className="font-mono text-xs font-black text-black">
-                {userProfile.display_name || 'YouTube Music Active'} ⚡
+                {userProfile.display_name || 'YouTube Music Active'}
               </span>
             </div>
           ) : (
             <a href={`${env.apiUrl}/auth/login`}>
-              <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
-                Connect YouTube Music ⚡
+               <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
+                Connect YouTube Music
               </NeoButton>
             </a>
           )}
@@ -145,8 +140,8 @@ export default function Home() {
 
           {/* Top handwritten sticker */}
           <div className="inline-block relative">
-            <Sticker color="pink" rotation={-4} size="md">
-              {"🎵 IT'S NOT THE SONGS, IT'S THE ORDER!"}
+             <Sticker color="pink" rotation={-4} size="md">
+              {"IT'S NOT THE SONGS, IT'S THE ORDER!"}
             </Sticker>
           </div>
 
@@ -192,8 +187,8 @@ export default function Home() {
         <div className="lg:col-span-6 flex justify-center relative">
           {/* Handwritten sticker pointing to visual */}
           <div className="absolute -top-6 right-12 z-30 hidden md:block">
-            <Sticker color="blue" rotation={5} size="sm">
-              Click to fix! ⚡
+             <Sticker color="blue" rotation={5} size="sm">
+              Click to fix!
             </Sticker>
           </div>
 
@@ -219,8 +214,8 @@ export default function Home() {
         </div>
 
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
-          <Sticker color="orange" rotation={-2} size="sm">
-            ⚠️ BEFORE vs AFTER
+           <Sticker color="orange" rotation={-2} size="sm">
+            BEFORE vs AFTER
           </Sticker>
 
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
@@ -240,12 +235,12 @@ export default function Home() {
             >
               1. Chaotic Sequence
             </button>
-            <button
+             <button
               onClick={fixPlaylistFlow}
               className={`px-4 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'optimized' ? 'bg-brand-blue text-black neo-border' : 'text-black'
                 }`}
             >
-              2. Optimized Flow ⚡
+              2. Optimized Flow
             </button>
           </div>
         </div>
@@ -282,8 +277,8 @@ export default function Home() {
                   transition={{ duration: 0.3 }}
                   className="h-full"
                 >
-                  <PlaylistCard
-                    title="Optimized Beach Sunset 🌊"
+                   <PlaylistCard
+                    title="Optimized Beach Sunset"
                     description="The exact same tracks, rearranged to build energy gradually and ensure seamless harmonic chord matches."
                     tracks={optimizedTracks}
                     variant="optimized"
@@ -306,11 +301,11 @@ export default function Home() {
               </span>
 
               {activeTab === 'optimized' && (
-                <button
+                 <button
                   onClick={resetPlaylistFlow}
                   className="text-brand-orange hover:underline font-extrabold uppercase"
                 >
-                  Reset Flow 🔄
+                  Reset Flow
                 </button>
               )}
             </div>
@@ -358,25 +353,25 @@ export default function Home() {
 
                         <div className="flex items-center justify-between mb-6 relative z-10">
                           <div className="flex items-center gap-3.5">
-                            {mode.id === 'bu' ? (
+                            {mode.id === 'bu' || mode.id === 'df' ? (
                               <div className="w-12 h-12 flex-shrink-0 relative">
                                 <div className="absolute top-[-80px] left-[-55px] w-56 h-56 z-20 pointer-events-none select-none transform -rotate-12">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
-                                    src="/graphics/ShinyHappyWeirdPoses3.svg"
-                                    alt="Shiny Happy Weird Poses"
+                                    src={mode.id === 'bu' ? "/graphics/ShinyHappyWeirdPoses3.svg" : "/graphics/OpenDoodlesGroovy.svg"}
+                                    alt={mode.title}
                                     className="w-full h-full object-contain"
                                   />
                                 </div>
                               </div>
-                            ) : (
+                            ) : mode.emoji ? (
                               <div className="w-12 h-12 rounded-xl neo-border bg-brand-yellow text-black flex items-center justify-center text-2xl shadow-sm transform -rotate-6 select-none shrink-0">
                                 {mode.emoji}
                               </div>
-                            )}
+                            ) : null}
                             <h3 className={cn(
                               "text-3xl sm:text-4xl font-black uppercase tracking-tight",
-                              mode.id === 'bu' && "pl-[80px]"
+                              (mode.id === 'bu' || mode.id === 'df') && "pl-[80px]"
                             )}>
                               {mode.title}
                             </h3>
@@ -410,7 +405,7 @@ export default function Home() {
                               : "bg-brand-yellow text-black hover:translate-y-[-2px] hover:shadow-md active:translate-y-[2px]"
                           )}
                         >
-                          {selectedFlow === mode.id ? "✓ Active Selection" : "Activate Flow ⚡"}
+                          {selectedFlow === mode.id ? "✓ Active Selection" : "Activate Flow"}
                         </button>
 
                       </div>
@@ -479,8 +474,8 @@ export default function Home() {
         </div>
 
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
-          <Sticker color="yellow" rotation={-3} size="sm">
-            🛠️ SIMPLE AS 1-2-3
+           <Sticker color="yellow" rotation={-3} size="sm">
+            SIMPLE AS 1-2-3
           </Sticker>
 
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">

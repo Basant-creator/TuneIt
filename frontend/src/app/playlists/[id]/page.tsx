@@ -146,7 +146,7 @@ export default function PlaylistModifierPage() {
                 {isComplete && (
                   <div className="absolute -top-6 -right-6 z-10">
                     <Sticker color="pink" rotation={10} size="sm">
-                      ✨ PERFECTED!
+                      PERFECTED!
                     </Sticker>
                   </div>
                 )}
@@ -178,7 +178,7 @@ export default function PlaylistModifierPage() {
                         )}
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-2xl">{mode.emoji}</span>
+                          {mode.emoji && <span className="text-2xl">{mode.emoji}</span>}
                           <h3 className="font-black uppercase text-sm">{mode.title}</h3>
                         </div>
                         <p className={cn(
@@ -197,7 +197,7 @@ export default function PlaylistModifierPage() {
                   <div className="space-y-4">
                     {selectedMode !== 'df' && (
                       <p className="font-mono text-[10px] font-black text-brand-orange bg-orange-50 border border-brand-orange p-2 rounded-lg text-center uppercase">
-                        This mode engine is currently offline. Select Drift (🌊) to continue.
+                        This mode engine is currently offline. Select Drift to continue.
                       </p>
                     )}
 

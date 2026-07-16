@@ -79,7 +79,7 @@ export const optimizedTracks = [
 export const flowModes = [
   {
     id: 'bu',
-    emoji: '🚀',
+    emoji: '',
     title: 'Rise',
     description: 'Start with a strut, end with a march. This journey escalates through gritty confidence and anthemic tension, steadily charging your emotional battery until you feel completely invincible.',
     color: 'pink' as const,
@@ -94,7 +94,7 @@ export const flowModes = [
   },
   {
     id: 'df',
-    emoji: '🌊',
+    emoji: '',
     title: 'Drift',
     description: 'Drift away into a dreamlike dreamscape. This journey glides smoothly through chilled synthwave, lo-fi haze, and euphoric house, ensuring there are no sudden drops to break your trance.',
     color: 'blue' as const,
@@ -109,7 +109,7 @@ export const flowModes = [
   },
   {
     id: 'ph',
-    emoji: '😈',
+    emoji: '',
     title: 'Unhinged',
     description: 'Disregard genre borders. This experience bounces between breezy indie-pop, psychedelic rock, swaggering hip-hop, and raw, classic diss tracks to deliver a satisfyingly unpredictable thrill.',
     color: 'orange' as const,
@@ -124,7 +124,7 @@ export const flowModes = [
   },
   {
     id: 'cm',
-    emoji: '🎬',
+    emoji: '',
     title: 'Frame',
     description: 'A sweeping sequence of high-drama hooks and timeless grooves, paced to evoke distinct acts of a movie—from tense setups to soaring resolution.',
     color: 'white' as const,

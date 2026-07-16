@@ -251,10 +251,10 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                 {/* Header */}
                 <div className="neo-border-b pb-1.5 mb-2 flex justify-between items-center select-none shrink-0">
                   <span className="text-[10px] font-black uppercase text-brand-blue flex items-center gap-1 font-mono">
-                    {modeId === 'bu' && "🚀 Rise Curve Sequence"}
-                    {modeId === 'df' && "🌊 Drift Flow Sequence"}
-                    {modeId === 'ph' && "😈 Unhinged Contrast Sequence"}
-                    {modeId === 'cm' && "🎬 Frame Narrative Sequence"}
+                    {modeId === 'bu' && "Rise Curve Sequence"}
+                    {modeId === 'df' && "Drift Flow Sequence"}
+                    {modeId === 'ph' && "Unhinged Contrast Sequence"}
+                    {modeId === 'cm' && "Frame Narrative Sequence"}
                   </span>
                   {stats && (
                     <span className="bg-brand-blue text-black neo-border-sm rounded px-1.5 py-0.5 text-[8.5px] font-black font-mono">
@@ -309,7 +309,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                               <div className="flex justify-between w-full text-[7.5px] font-mono font-bold leading-none mb-0.5">
                                 <span className="text-slate-400">Flow</span>
                                 <span className="font-black text-black">
-                                  {hasNext ? `${transScore}%` : "🏁 END"}
+                                  {hasNext ? `${transScore}%` : "END"}
                                 </span>
                               </div>
                               <div className="w-full h-1.5 neo-border-sm rounded bg-slate-100 overflow-hidden relative">

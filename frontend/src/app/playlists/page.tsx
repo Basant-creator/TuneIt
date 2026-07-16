@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Volume2, ArrowLeft, Loader2, Music2 } from 'lucide-react';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
+import { TextLogo } from '@/components/TextLogo';
 
 export default function PlaylistsPage() {
   const router = useRouter();
@@ -39,13 +40,8 @@ export default function PlaylistsPage() {
     <div className="min-h-screen bg-[#F8FFE5] text-black">
       {/* HEADER */}
       <header className="w-full py-5 px-6 md:px-12 border-b-3 border-black bg-white flex items-center justify-between sticky top-0 z-50 select-none">
-        <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push('/')}>
-          <div className="w-10 h-10 rounded-xl bg-brand-pink border-2 border-black flex items-center justify-center shadow-sm transform -rotate-3 shrink-0">
-            <Volume2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-black tracking-tight uppercase font-heading select-none hidden sm:block">
-            TuneIt
-          </span>
+        <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
+          <TextLogo />
         </div>
 
         <div className="flex items-center gap-3">
@@ -59,7 +55,7 @@ export default function PlaylistsPage() {
                 />
               )}
               <span className="font-mono text-xs font-black text-black hidden sm:inline">
-                {userProfile.display_name} ⚡
+                {userProfile.display_name}
               </span>
             </div>
           )}
@@ -79,7 +75,7 @@ export default function PlaylistsPage() {
             </h1>
             <div className="absolute -top-6 -right-16 hidden md:block">
               <Sticker color="blue" rotation={6} size="sm">
-                Pick one! 👇
+                Pick one!
               </Sticker>
             </div>
           </div>

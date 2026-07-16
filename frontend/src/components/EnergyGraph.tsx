@@ -134,7 +134,7 @@ export function EnergyGraph({ className, activeMode = 'chaotic' }: EnergyGraphPr
               exit={{ opacity: 0, rotate: 0, scale: 0.8 }}
               className="absolute right-4 bottom-8 neo-border px-3 py-1 bg-brand-pink text-white rounded font-handwritten text-sm select-none z-20 shadow-sm"
             >
-              {"🎧 \"This sequence gives you whiplash\""}
+              {"\"This sequence gives you whiplash\""}
             </motion.div>
           ) : (
             <motion.div
@@ -143,7 +143,7 @@ export function EnergyGraph({ className, activeMode = 'chaotic' }: EnergyGraphPr
               exit={{ opacity: 0, rotate: 0, scale: 0.8 }}
               className="absolute right-6 bottom-12 neo-border px-3 py-1 bg-brand-yellow text-black rounded font-handwritten text-sm select-none z-20 shadow-sm"
             >
-              {"🔥 \"A perfectly sequenced crescendo!\""}
+              {"\"A perfectly sequenced crescendo!\""}
             </motion.div>
           )}
         </AnimatePresence>
@@ -151,8 +151,8 @@ export function EnergyGraph({ className, activeMode = 'chaotic' }: EnergyGraphPr
 
       {/* Y Axis / X Axis Info labels */}
       <div className="flex items-center justify-between text-[10px] font-black uppercase font-mono mt-3 text-slate-500">
-        <span>⬅️ Start of Playlist</span>
-        <span>End of Playlist ➡️</span>
+        <span>Start of Playlist</span>
+        <span>End of Playlist</span>
       </div>
     </div>
   );
