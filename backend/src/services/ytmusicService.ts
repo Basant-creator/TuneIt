@@ -28,7 +28,7 @@ export class YtMusicService {
   public getAuthUrl(): string {
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: ['https://www.googleapis.com/auth/youtube.readonly'],
+      scope: ['https://www.googleapis.com/auth/youtube'],
       prompt: 'consent', // Forces Google to show consent screen to ensure refresh token is returned
     });
   }
@@ -146,7 +146,7 @@ export class YtMusicService {
       let nextPageToken: string | undefined = undefined;
 
       do {
-        const response = await youtube.playlistItems.list({
+        const response: any = await youtube.playlistItems.list({
           part: ['snippet'],
           playlistId: playlistId,
           maxResults: 50,
@@ -194,6 +194,96 @@ export class YtMusicService {
       return tracks;
     } catch (err: any) {
       console.error('[YtMusicService] Error fetching playlist tracks:', err?.message || err);
+      throw err;
+    }
+  }
+
+  /**
+   * Creates a new playlist on YouTube.
+   */
+  public async createPlaylist(title: string, description?: string): Promise<{ id: string; title: string; url: string }> {
+    if (!this.hasTokens) {
+      throw new Error('Unauthorized. No active Google session.');
+    }
+
+    try {
+      const youtube = google.youtube({
+        version: 'v3',
+        auth: this.oauth2Client,
+      });
+
+      console.log(`[YtMusicService] Creating playlist "${title}"...`);
+      const response = await youtube.playlists.insert({
+        part: ['snippet', 'status'],
+        requestBody: {
+          snippet: {
+            title: title.trim(),
+            description: description || 'Created and optimized with TuneIt Drift Engine',
+          },
+          status: {
+            privacyStatus: 'private',
+          },
+        },
+      });
+
+      const playlistId = response.data.id;
+      if (!playlistId) {
+        throw new Error('Failed to retrieve ID for created playlist.');
+      }
+
+      console.log(`[YtMusicService] Playlist created successfully with ID: ${playlistId}`);
+
+      return {
+        id: playlistId,
+        title: response.data.snippet?.title || title,
+        url: `https://music.youtube.com/playlist?list=${playlistId}`,
+      };
+    } catch (err: any) {
+      console.error('[YtMusicService] Error creating playlist:', err?.message || err);
+      throw err;
+    }
+  }
+
+  /**
+   * Adds video tracks to an existing playlist in order.
+   */
+  public async addTracksToPlaylist(playlistId: string, videoIds: string[]): Promise<void> {
+    if (!this.hasTokens) {
+      throw new Error('Unauthorized. No active Google session.');
+    }
+
+    try {
+      const youtube = google.youtube({
+        version: 'v3',
+        auth: this.oauth2Client,
+      });
+
+      console.log(`[YtMusicService] Adding ${videoIds.length} tracks to playlist ${playlistId}...`);
+
+      for (let i = 0; i < videoIds.length; i++) {
+        const videoId = videoIds[i];
+        try {
+          await youtube.playlistItems.insert({
+            part: ['snippet'],
+            requestBody: {
+              snippet: {
+                playlistId: playlistId,
+                resourceId: {
+                  kind: 'youtube#video',
+                  videoId: videoId,
+                },
+              },
+            },
+          });
+        } catch (itemErr: any) {
+          console.error(`[YtMusicService] Failed to add track ${videoId} (index ${i}):`, itemErr?.message || itemErr);
+          // Continue inserting remaining tracks even if one fails
+        }
+      }
+
+      console.log(`[YtMusicService] Finished inserting tracks into playlist ${playlistId}.`);
+    } catch (err: any) {
+      console.error('[YtMusicService] Error adding tracks to playlist:', err?.message || err);
       throw err;
     }
   }

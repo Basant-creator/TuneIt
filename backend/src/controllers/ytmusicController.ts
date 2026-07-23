@@ -93,3 +93,37 @@ export const getPlaylistTracks = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const exportPlaylist = async (req: Request, res: Response) => {
+  const { title, videoIds, description } = req.body;
+
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'Playlist title is required' });
+  }
+
+  if (!videoIds || !Array.isArray(videoIds) || videoIds.length === 0) {
+    return res.status(400).json({ error: 'At least one track (videoId) is required' });
+  }
+
+  try {
+    const ytmusicService = YtMusicService.getInstance();
+    
+    // 1. Create playlist shell
+    const newPlaylist = await ytmusicService.createPlaylist(title, description);
+
+    // 2. Add tracks to playlist
+    await ytmusicService.addTracksToPlaylist(newPlaylist.id, videoIds);
+
+    res.status(201).json({
+      message: 'Playlist exported successfully to YouTube Music',
+      playlist: newPlaylist,
+    });
+  } catch (err: any) {
+    console.error('[YtMusicController] Error exporting playlist:', err?.message || err);
+    const statusCode = err?.message?.includes('session') || err?.message?.includes('Unauthorized') ? 401 : 500;
+    res.status(statusCode).json({
+      error: 'Failed to export playlist to YouTube Music',
+      details: err?.message || err,
+    });
+  }
+};

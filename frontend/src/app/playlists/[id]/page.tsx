@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Play, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Play, Sparkles, AlertCircle, Share2, CheckCircle2, ExternalLink, X, Music } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
@@ -34,6 +34,13 @@ export default function PlaylistModifierPage() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Export to YouTube Music modal state
+  const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
+  const [exportTitle, setExportTitle] = React.useState('TuneIt Flow - Optimized Playlist');
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [exportedPlaylistUrl, setExportedPlaylistUrl] = React.useState<string | null>(null);
+  const [exportError, setExportError] = React.useState<string | null>(null);
 
   // Fetch original tracks on mount
   React.useEffect(() => {
@@ -109,6 +116,41 @@ export default function PlaylistModifierPage() {
       setDisplayTracks(originalTracks); // Revert to original on error
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleExportPlaylist = async () => {
+    if (!exportTitle.trim()) {
+      setExportError('Playlist title cannot be empty');
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const videoIds = displayTracks.map(t => t.videoId);
+      const res = await fetch('http://127.0.0.1:3001/api/playlists/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: exportTitle.trim(),
+          videoIds,
+          description: `Optimized playlist flow (${displayTracks.length} tracks) created with TuneIt.`
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to export playlist');
+      }
+
+      setExportedPlaylistUrl(data.playlist?.url || `https://music.youtube.com/playlist?list=${data.playlist?.id}`);
+    } catch (err: any) {
+      console.error('[Export Error]', err);
+      setExportError(err.message || 'Failed to export playlist');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -228,6 +270,21 @@ export default function PlaylistModifierPage() {
                         Flow Applied Successfully
                       </h4>
                     </div>
+
+                    <NeoButton
+                      color="yellow"
+                      className="w-full justify-center h-14 font-black"
+                      onClick={() => {
+                        setExportTitle(`TuneIt Flow - ${flowModes.find(m => m.id === selectedMode)?.title || 'Optimized'}`);
+                        setExportError(null);
+                        setExportedPlaylistUrl(null);
+                        setIsExportModalOpen(true);
+                      }}
+                    >
+                      <Share2 className="w-5 h-5 mr-2 inline" />
+                      EXPORT TO YOUTUBE MUSIC
+                    </NeoButton>
+
                     <NeoButton
                       color="white"
                       className="w-full justify-center"
@@ -356,6 +413,132 @@ export default function PlaylistModifierPage() {
           </div>
         )}
       </main>
+
+      {/* EXPORT TO YOUTUBE MUSIC MODAL */}
+      <AnimatePresence>
+        {isExportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm select-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white neo-border border-black rounded-3xl p-6 md:p-8 max-w-lg w-full relative shadow-2xl"
+            >
+              <button
+                onClick={() => setIsExportModalOpen(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-black p-2 rounded-full transition-colors"
+                disabled={isExporting}
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {!exportedPlaylistUrl ? (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-yellow neo-border border-black flex items-center justify-center font-black">
+                      <Music className="w-6 h-6 text-black" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black uppercase">Export Playlist</h2>
+                      <p className="font-mono text-xs font-bold text-slate-500">Save your optimized sequence to YouTube Music</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 my-6">
+                    <div>
+                      <label className="block font-mono text-xs font-black uppercase text-slate-700 mb-2">
+                        Playlist Name
+                      </label>
+                      <input
+                        type="text"
+                        value={exportTitle}
+                        onChange={(e) => setExportTitle(e.target.value)}
+                        placeholder="Enter playlist name..."
+                        disabled={isExporting}
+                        className="w-full bg-slate-50 border-2 border-black rounded-xl p-3 font-bold font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow text-black"
+                      />
+                    </div>
+
+                    <div className="bg-slate-100 border border-slate-300 rounded-xl p-3 font-mono text-xs text-slate-600 font-bold flex justify-between items-center">
+                      <span>Tracks to export:</span>
+                      <span className="font-black text-black bg-white px-2 py-1 rounded-md border border-black">{displayTracks.length}</span>
+                    </div>
+
+                    {exportError && (
+                      <div className="bg-red-50 border border-red-300 text-red-600 p-3 rounded-xl font-mono text-xs font-bold flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{exportError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <NeoButton
+                      color="white"
+                      className="flex-1 justify-center"
+                      onClick={() => setIsExportModalOpen(false)}
+                      disabled={isExporting}
+                    >
+                      Cancel
+                    </NeoButton>
+
+                    <NeoButton
+                      color="yellow"
+                      className="flex-1 justify-center"
+                      onClick={handleExportPlaylist}
+                      disabled={isExporting || !exportTitle.trim()}
+                    >
+                      {isExporting ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          EXPORTING...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          CREATE PLAYLIST
+                        </span>
+                      )}
+                    </NeoButton>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-4 space-y-4">
+                  <div className="w-16 h-16 bg-green-100 border-2 border-green-500 rounded-full flex items-center justify-center mx-auto text-green-600">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-black uppercase text-slate-900">Playlist Exported!</h2>
+                    <p className="font-mono text-xs font-bold text-slate-500 mt-1">
+                      "{exportTitle}" was successfully created on YouTube Music.
+                    </p>
+                  </div>
+
+                  <div className="pt-4 flex flex-col gap-3">
+                    <a
+                      href={exportedPlaylistUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 bg-brand-yellow neo-border border-black font-black uppercase py-3 px-6 rounded-2xl shadow-md hover:-translate-y-1 transition-all text-black"
+                    >
+                      <ExternalLink className="w-5 h-5" />
+                      Open in YouTube Music
+                    </a>
+
+                    <NeoButton
+                      color="white"
+                      className="w-full justify-center"
+                      onClick={() => setIsExportModalOpen(false)}
+                    >
+                      Close
+                    </NeoButton>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
