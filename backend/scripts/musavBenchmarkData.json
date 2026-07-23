@@ -1,0 +1,302 @@
+[
+  {
+    "videoId": "musav_001",
+    "title": "Resonance",
+    "artist": "HOME",
+    "estimatedBpm": 120,
+    "intensityScore": 0.22,
+    "arousal": 0.22,
+    "valence": 0.65,
+    "genre": "Synthwave / Chill"
+  },
+  {
+    "videoId": "musav_002",
+    "title": "A Walk",
+    "artist": "Tycho",
+    "estimatedBpm": 110,
+    "intensityScore": 0.25,
+    "arousal": 0.24,
+    "valence": 0.70,
+    "genre": "Ambient / Downtempo"
+  },
+  {
+    "videoId": "musav_003",
+    "title": "Nightcall",
+    "artist": "Kavinsky",
+    "estimatedBpm": 118,
+    "intensityScore": 0.38,
+    "arousal": 0.36,
+    "valence": 0.45,
+    "genre": "Electro / Synthwave"
+  },
+  {
+    "videoId": "musav_004",
+    "title": "Something About Us",
+    "artist": "Daft Punk",
+    "estimatedBpm": 106,
+    "intensityScore": 0.30,
+    "arousal": 0.28,
+    "valence": 0.75,
+    "genre": "Nu-Disco / R&B"
+  },
+  {
+    "videoId": "musav_005",
+    "title": "Teardrop",
+    "artist": "Massive Attack",
+    "estimatedBpm": 105,
+    "intensityScore": 0.32,
+    "arousal": 0.30,
+    "valence": 0.40,
+    "genre": "Trip-Hop"
+  },
+  {
+    "videoId": "musav_006",
+    "title": "Sweden",
+    "artist": "C418",
+    "estimatedBpm": 75,
+    "intensityScore": 0.15,
+    "arousal": 0.12,
+    "valence": 0.50,
+    "genre": "Ambient / Piano"
+  },
+  {
+    "videoId": "musav_007",
+    "title": "Midnight City",
+    "artist": "M83",
+    "estimatedBpm": 126,
+    "intensityScore": 0.58,
+    "arousal": 0.60,
+    "valence": 0.82,
+    "genre": "Indie Electronic"
+  },
+  {
+    "videoId": "musav_008",
+    "title": "Intro",
+    "artist": "The XX",
+    "estimatedBpm": 108,
+    "intensityScore": 0.28,
+    "arousal": 0.26,
+    "valence": 0.55,
+    "genre": "Indie Pop / Chill"
+  },
+  {
+    "videoId": "musav_009",
+    "title": "Kerala",
+    "artist": "Bonobo",
+    "estimatedBpm": 124,
+    "intensityScore": 0.48,
+    "arousal": 0.46,
+    "valence": 0.68,
+    "genre": "Downtempo / Electronic"
+  },
+  {
+    "videoId": "musav_0010",
+    "title": "Innerbloom",
+    "artist": "RÜFÜS DU SOL",
+    "estimatedBpm": 122,
+    "intensityScore": 0.42,
+    "arousal": 0.40,
+    "valence": 0.60,
+    "genre": "Deep House / Chill"
+  },
+  {
+    "videoId": "musav_0011",
+    "title": "Scary Monsters and Nice Sprites",
+    "artist": "Skrillex",
+    "estimatedBpm": 140,
+    "intensityScore": 0.92,
+    "arousal": 0.95,
+    "valence": 0.40,
+    "genre": "Dubstep / EDM"
+  },
+  {
+    "videoId": "musav_0012",
+    "title": "Murder In My Mind",
+    "artist": "KORDHELL",
+    "estimatedBpm": 160,
+    "intensityScore": 0.88,
+    "arousal": 0.90,
+    "valence": 0.30,
+    "genre": "Phonk / Heavy Aggressive"
+  },
+  {
+    "videoId": "musav_0013",
+    "title": "Continuum",
+    "artist": "Disasterpeace",
+    "estimatedBpm": 115,
+    "intensityScore": 0.35,
+    "arousal": 0.33,
+    "valence": 0.58,
+    "genre": "Chiptune / Game OST"
+  },
+  {
+    "videoId": "musav_0014",
+    "title": "Avril 14th",
+    "artist": "Aphex Twin",
+    "estimatedBpm": 80,
+    "intensityScore": 0.18,
+    "arousal": 0.14,
+    "valence": 0.60,
+    "genre": "Modern Classical / Piano"
+  },
+  {
+    "videoId": "musav_0015",
+    "title": "Acid Rain",
+    "artist": "Lorn",
+    "estimatedBpm": 112,
+    "intensityScore": 0.52,
+    "arousal": 0.54,
+    "valence": 0.25,
+    "genre": "Dark Experimental"
+  },
+  {
+    "videoId": "musav_0016",
+    "title": "Glue",
+    "artist": "Bicep",
+    "estimatedBpm": 130,
+    "intensityScore": 0.50,
+    "arousal": 0.48,
+    "valence": 0.72,
+    "genre": "Breakbeat / House"
+  },
+  {
+    "videoId": "musav_0017",
+    "title": "Archangel",
+    "artist": "Burial",
+    "estimatedBpm": 134,
+    "intensityScore": 0.45,
+    "arousal": 0.44,
+    "valence": 0.35,
+    "genre": "Future Garage"
+  },
+  {
+    "videoId": "musav_0018",
+    "title": "Dayvan Cowboy",
+    "artist": "Boards of Canada",
+    "estimatedBpm": 116,
+    "intensityScore": 0.33,
+    "arousal": 0.31,
+    "valence": 0.62,
+    "genre": "IDM / Downtempo"
+  },
+  {
+    "videoId": "musav_0019",
+    "title": "Can't Do Without You",
+    "artist": "Caribou",
+    "estimatedBpm": 128,
+    "intensityScore": 0.55,
+    "arousal": 0.56,
+    "valence": 0.78,
+    "genre": "Indie Dance / Pop"
+  },
+  {
+    "videoId": "musav_0020",
+    "title": "Lush",
+    "artist": "Four Tet",
+    "estimatedBpm": 125,
+    "intensityScore": 0.39,
+    "arousal": 0.37,
+    "valence": 0.70,
+    "genre": "Folktronica"
+  },
+  {
+    "videoId": "musav_0021",
+    "title": "HUMBLE.",
+    "artist": "Kendrick Lamar",
+    "estimatedBpm": 150,
+    "intensityScore": 0.82,
+    "arousal": 0.85,
+    "valence": 0.50,
+    "genre": "Hip-Hop / Rap"
+  },
+  {
+    "videoId": "musav_0022",
+    "title": "Blinding Lights",
+    "artist": "The Weeknd",
+    "estimatedBpm": 171,
+    "intensityScore": 0.75,
+    "arousal": 0.78,
+    "valence": 0.80,
+    "genre": "Synth-Pop"
+  },
+  {
+    "videoId": "musav_0023",
+    "title": "Enter Sandman",
+    "artist": "Metallica",
+    "estimatedBpm": 123,
+    "intensityScore": 0.86,
+    "arousal": 0.89,
+    "valence": 0.35,
+    "genre": "Heavy Metal"
+  },
+  {
+    "videoId": "musav_0024",
+    "title": "Redbone",
+    "artist": "Childish Gambino",
+    "estimatedBpm": 116,
+    "intensityScore": 0.35,
+    "arousal": 0.33,
+    "valence": 0.72,
+    "genre": "Funk / Soul"
+  },
+  {
+    "videoId": "musav_0025",
+    "title": "Get Lucky",
+    "artist": "Daft Punk ft. Pharrell Williams",
+    "estimatedBpm": 116,
+    "intensityScore": 0.50,
+    "arousal": 0.52,
+    "valence": 0.88,
+    "genre": "Disco / Pop"
+  },
+  {
+    "videoId": "musav_0026",
+    "title": "Take Five",
+    "artist": "Dave Brubeck",
+    "estimatedBpm": 174,
+    "intensityScore": 0.28,
+    "arousal": 0.30,
+    "valence": 0.65,
+    "genre": "Cool Jazz"
+  },
+  {
+    "videoId": "musav_0027",
+    "title": "Hotel California",
+    "artist": "Eagles",
+    "estimatedBpm": 147,
+    "intensityScore": 0.45,
+    "arousal": 0.42,
+    "valence": 0.58,
+    "genre": "Classic Rock"
+  },
+  {
+    "videoId": "musav_0028",
+    "title": "Weightless",
+    "artist": "Marconi Union",
+    "estimatedBpm": 60,
+    "intensityScore": 0.05,
+    "arousal": 0.05,
+    "valence": 0.40,
+    "genre": "Pure Ambient"
+  },
+  {
+    "videoId": "musav_0029",
+    "title": "Clair de Lune",
+    "artist": "Claude Debussy",
+    "estimatedBpm": 65,
+    "intensityScore": 0.12,
+    "arousal": 0.10,
+    "valence": 0.55,
+    "genre": "Classical Piano"
+  },
+  {
+    "videoId": "musav_0030",
+    "title": "Sunflower",
+    "artist": "Post Malone & Swae Lee",
+    "estimatedBpm": 90,
+    "intensityScore": 0.42,
+    "arousal": 0.40,
+    "valence": 0.85,
+    "genre": "Pop / Melodic Rap"
+  }
+]
