@@ -113,7 +113,7 @@ export default function Home() {
             </div>
           ) : (
             <a href={`${env.apiUrl}/auth/login`}>
-               <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
+              <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
                 Connect YouTube Music
               </NeoButton>
             </a>
@@ -140,7 +140,7 @@ export default function Home() {
 
           {/* Top handwritten sticker */}
           <div className="inline-block relative">
-             <Sticker color="pink" rotation={-4} size="md">
+            <Sticker color="pink" rotation={-4} size="md">
               {"IT'S NOT THE SONGS, IT'S THE ORDER!"}
             </Sticker>
           </div>
@@ -187,7 +187,7 @@ export default function Home() {
         <div className="lg:col-span-6 flex justify-center relative">
           {/* Handwritten sticker pointing to visual */}
           <div className="absolute -top-6 right-12 z-30 hidden md:block">
-             <Sticker color="blue" rotation={5} size="sm">
+            <Sticker color="blue" rotation={5} size="sm">
               Click to fix!
             </Sticker>
           </div>
@@ -214,7 +214,7 @@ export default function Home() {
         </div>
 
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
-           <Sticker color="orange" rotation={-2} size="sm">
+          <Sticker color="orange" rotation={-2} size="sm">
             BEFORE vs AFTER
           </Sticker>
 
@@ -235,7 +235,7 @@ export default function Home() {
             >
               1. Chaotic Sequence
             </button>
-             <button
+            <button
               onClick={fixPlaylistFlow}
               className={`px-4 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'optimized' ? 'bg-brand-blue text-black neo-border' : 'text-black'
                 }`}
@@ -277,7 +277,7 @@ export default function Home() {
                   transition={{ duration: 0.3 }}
                   className="h-full"
                 >
-                   <PlaylistCard
+                  <PlaylistCard
                     title="Optimized Beach Sunset"
                     description="The exact same tracks, rearranged to build energy gradually and ensure seamless harmonic chord matches."
                     tracks={optimizedTracks}
@@ -301,7 +301,7 @@ export default function Home() {
               </span>
 
               {activeTab === 'optimized' && (
-                 <button
+                <button
                   onClick={resetPlaylistFlow}
                   className="text-brand-orange hover:underline font-extrabold uppercase"
                 >
@@ -353,12 +353,20 @@ export default function Home() {
 
                         <div className="flex items-center justify-between mb-6 relative z-10">
                           <div className="flex items-center gap-3.5">
-                            {mode.id === 'bu' || mode.id === 'df' ? (
+                            {mode.id === 'bu' || mode.id === 'df' || mode.id === 'ph' || mode.id === 'cm' ? (
                               <div className="w-12 h-12 flex-shrink-0 relative">
                                 <div className="absolute top-[-80px] left-[-55px] w-56 h-56 z-20 pointer-events-none select-none transform -rotate-12">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
-                                    src={mode.id === 'bu' ? "/graphics/ShinyHappyWeirdPoses3.svg" : "/graphics/OpenDoodlesGroovy.svg"}
+                                    src={
+                                      mode.id === 'bu' 
+                                        ? "/graphics/ShinyHappyWeirdPoses3.svg" 
+                                        : mode.id === 'df' 
+                                        ? "/graphics/OpenDoodlesGroovy.svg" 
+                                        : mode.id === 'ph'
+                                        ? "/graphics/being-creative.svg"
+                                        : "/graphics/speed-go-fast.svg"
+                                    }
                                     alt={mode.title}
                                     className="w-full h-full object-contain"
                                   />
@@ -371,7 +379,7 @@ export default function Home() {
                             ) : null}
                             <h3 className={cn(
                               "text-3xl sm:text-4xl font-black uppercase tracking-tight",
-                              (mode.id === 'bu' || mode.id === 'df') && "pl-[80px]"
+                              (mode.id === 'bu' || mode.id === 'df' || mode.id === 'ph' || mode.id === 'cm') && "pl-[80px]"
                             )}>
                               {mode.title}
                             </h3>
@@ -474,7 +482,7 @@ export default function Home() {
         </div>
 
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-4">
-           <Sticker color="yellow" rotation={-3} size="sm">
+          <Sticker color="yellow" rotation={-3} size="sm">
             SIMPLE AS 1-2-3
           </Sticker>
 
