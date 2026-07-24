@@ -2,38 +2,61 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Volume2, ArrowLeft, Loader2, Music2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Music2 } from 'lucide-react';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { TextLogo } from '@/components/TextLogo';
+import { env } from '@/lib/env';
+
+interface UserProfile {
+  display_name?: string;
+  images?: Array<{ url: string }>;
+}
+
+interface Playlist {
+  id: string;
+  name: string;
+  description?: string;
+  images?: Array<{ url: string }>;
+  tracks?: { total: number };
+}
 
 export default function PlaylistsPage() {
   const router = useRouter();
   const [loading, setLoading] = React.useState(true);
-  const [userProfile, setUserProfile] = React.useState<any>(null);
-  const [playlists, setPlaylists] = React.useState<any[]>([]);
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const [playlists, setPlaylists] = React.useState<Playlist[]>([]);
 
   React.useEffect(() => {
-    fetch('http://127.0.0.1:3001/api/me')
-      .then((res) => {
-        if (!res.ok) throw new Error('Unauthenticated');
-        return res.json();
-      })
-      .then((profile) => {
-        setUserProfile(profile);
-        return fetch('http://127.0.0.1:3001/api/playlists');
-      })
-      .then((res) => (res ? res.json() : null))
-      .then((data) => {
-        if (data && data.items) {
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        const meRes = await fetch(`${env.apiUrl}/api/me`);
+        if (!meRes.ok) throw new Error('Unauthenticated');
+        const profile = await meRes.json();
+        if (isMounted) setUserProfile(profile);
+
+        const playlistsRes = await fetch(`${env.apiUrl}/api/playlists`);
+        if (!playlistsRes.ok) throw new Error('Failed to fetch playlists');
+        const data = await playlistsRes.json();
+
+        if (isMounted && data?.items) {
           setPlaylists(data.items);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        router.push('/');
-      });
+      } catch (err) {
+        console.error('[PlaylistsPage Error]', err);
+        if (isMounted) router.push('/');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   return (
@@ -50,7 +73,7 @@ export default function PlaylistsPage() {
               {userProfile.images?.[0]?.url && (
                 <img
                   src={userProfile.images[0].url}
-                  alt={userProfile.display_name}
+                  alt={userProfile.display_name || 'User'}
                   className="w-6 h-6 rounded-full border-2 border-black"
                 />
               )}
@@ -80,7 +103,7 @@ export default function PlaylistsPage() {
             </div>
           </div>
           <p className="font-mono font-bold text-slate-700 max-w-xl text-sm">
-            Select a playlist below to start rearranging its flow. We've fetched these directly from your YouTube account.
+            Select a playlist below to start rearranging its flow. We&apos;ve fetched these directly from your YouTube account.
           </p>
         </div>
 
@@ -94,7 +117,7 @@ export default function PlaylistsPage() {
             <Music2 className="w-16 h-16 text-slate-300 mb-4" />
             <h3 className="text-2xl font-black uppercase mb-2">No Playlists Found</h3>
             <p className="font-mono text-sm text-slate-600 mb-6 max-w-sm">
-              We couldn't find any playlists in your YouTube account. Create one on YouTube and come back!
+              We couldn&apos;t find any playlists in your YouTube account. Create one on YouTube and come back!
             </p>
           </div>
         ) : (

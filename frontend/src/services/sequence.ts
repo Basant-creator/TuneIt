@@ -6,44 +6,46 @@ import type {
 } from '@/types/sequence';
 
 /**
+ * Static Pitch Class Mappings to Camelot Wheel Notation.
+ * Major keys (mode = 1) and Minor keys (mode = 0).
+ */
+const MAJOR_KEY_MAPPING: Record<number, string> = {
+  0: '8B', // C
+  1: '3B', // C♯
+  2: '10B', // D
+  3: '5B', // D♯
+  4: '12B', // E
+  5: '7B', // F
+  6: '2B', // F♯
+  7: '9B', // G
+  8: '4B', // G♯
+  9: '11B', // A
+  10: '6B', // A♯
+  11: '1B', // B
+};
+
+const MINOR_KEY_MAPPING: Record<number, string> = {
+  0: '5A', // C minor
+  1: '12A', // C♯ minor
+  2: '7A', // D minor
+  3: '2A', // D♯ minor
+  4: '9A', // E minor
+  5: '4A', // F minor
+  6: '11A', // F♯ minor
+  7: '6A', // G minor
+  8: '1A', // G♯ minor
+  9: '8A', // A minor
+  10: '3A', // A♯ minor
+  11: '10A', // B minor
+};
+
+/**
  * Maps pitch class notation (0-11) and mode (0-1) to Camelot Wheel shorthand (1A-12B).
- * Camelot Wheel is the industry standard for harmonic mixing.
  */
 export function mapPitchClassToCamelot(key: number, mode: number): string {
-  // Pitch Class: 0 = C, 1 = C♯, 2 = D, 3 = D♯, 4 = E, 5 = F, 6 = F♯, 7 = G, 8 = G♯, 9 = A, 10 = A♯, 11 = B
-  // Major keys (mode = 1) mapping:
-  const majorMapping: Record<number, string> = {
-    0: '8B', // C
-    1: '3B', // C♯
-    2: '10B', // D
-    3: '5B', // D♯
-    4: '12B', // E
-    5: '7B', // F
-    6: '2B', // F♯
-    7: '9B', // G
-    8: '4B', // G♯
-    9: '11B', // A
-    10: '6B', // A♯
-    11: '1B', // B
-  };
-
-  // Minor keys (mode = 0) mapping:
-  const minorMapping: Record<number, string> = {
-    0: '5A', // C minor
-    1: '12A', // C♯ minor
-    2: '7A', // D minor
-    3: '2A', // D♯ minor
-    4: '9A', // E minor
-    5: '4A', // F minor
-    6: '11A', // F♯ minor
-    7: '6A', // G minor
-    8: '1A', // G♯ minor
-    9: '8A', // A minor
-    10: '3A', // A♯ minor
-    11: '10A', // B minor
-  };
-
-  return mode === 1 ? majorMapping[key] || '8B' : minorMapping[key] || '8A';
+  return mode === 1
+    ? MAJOR_KEY_MAPPING[key] || '8B'
+    : MINOR_KEY_MAPPING[key] || '8A';
 }
 
 /**
@@ -74,9 +76,6 @@ export function calculateTransition(
   let keyMatchScore = 0; // 0 to 100
 
   // Standard Camelot rules:
-  // - Same key (e.g. 8A -> 8A): Perfect match
-  // - Adjacent keys (e.g. 8A -> 7A or 9A): Perfect harmonic transition (1 step)
-  // - Major/Minor shift (e.g. 8A -> 8B): Perfect relative key switch
   const stepDiff = Math.abs(numA - numB);
   const cyclicDiff = Math.min(stepDiff, 12 - stepDiff);
 
@@ -90,7 +89,7 @@ export function calculateTransition(
     keyCompatible = true;
     keyMatchScore = 80;
   } else if (cyclicDiff === 1 && letterA !== letterB) {
-    // Semi-compatible (e.g. 8A -> 9B - diagonal transition)
+    // Semi-compatible (diagonal transition)
     keyCompatible = true;
     keyMatchScore = 50;
   } else {
@@ -99,7 +98,6 @@ export function calculateTransition(
   }
 
   // 3. Compute overall Transition score (0-100)
-  // BPM Penalty: lose 10 points per BPM difference
   const bpmPenalty = bpmDelta * 8;
   const overallTransitionScore = Math.max(
     0,
@@ -135,12 +133,11 @@ export function sequencePlaylist(
     };
   }
 
-  // A basic greedy algorithm to sequence the tracks based on mixing compatibility
   const unsequenced = [...tracks];
   const sequenced: SpotifyTrack[] = [];
   const transitions: TransitionMetric[] = [];
 
-  // Sort original tracks by initial tempo to make a baseline if configuration asks for ascending
+  // Sort original tracks by initial tempo if configuration asks for ascending
   if (config.targetCurve === 'asc') {
     unsequenced.sort(
       (a, b) => (a.audioFeatures?.tempo || 0) - (b.audioFeatures?.tempo || 0)
@@ -162,10 +159,8 @@ export function sequencePlaylist(
       const candidate = unsequenced[i];
       const transition = calculateTransition(current, candidate);
 
-      // Score weight adjustments
       let score = transition.overallTransitionScore;
 
-      // Curve penalties (e.g. if we want ascending and tempo decreases, penalize it)
       if (config.targetCurve === 'asc') {
         const tempoCurrent = current.audioFeatures?.tempo || 120;
         const tempoCandidate = candidate.audioFeatures?.tempo || 120;

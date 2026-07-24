@@ -7,16 +7,20 @@ import playlistRoutes from './routes/playlists';
 const app = express();
 const PORT = googleConfig.port;
 
-// Configure CORS
+// Configure CORS allowed origins
+const ALLOWED_ORIGINS = Array.from(
+  new Set([
+    googleConfig.frontendUrl,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ])
+);
+
 app.use(
   cors({
-    origin: [
-      googleConfig.frontendUrl,
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-    ],
+    origin: ALLOWED_ORIGINS,
     credentials: true,
   })
 );
@@ -48,10 +52,10 @@ app.use((req: Request, res: Response) => {
 // Global JSON error handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('[Server Error Handler] Unhandled error:', err);
-  
+
   const statusCode = err.status || err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
-  
+
   res.status(statusCode).json({
     error: message,
     ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
@@ -66,4 +70,5 @@ app.listen(PORT, () => {
   console.log(`🔗 Frontend Allowed URL: ${googleConfig.frontendUrl}`);
   console.log(`=================================================`);
 });
+
 export default app;

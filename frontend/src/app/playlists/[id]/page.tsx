@@ -9,6 +9,7 @@ import { Sticker } from '@/components/Sticker';
 import { SpinningBlocks } from '@/components/SpinningBlocks';
 import { cn } from '@/utils/cn';
 import { flowModes } from '@/data/homeData';
+import { env } from '@/lib/env';
 
 interface Track {
   videoId: string;
@@ -44,34 +45,44 @@ export default function PlaylistModifierPage() {
 
   // Fetch original tracks on mount
   React.useEffect(() => {
+    let isMounted = true;
+
     const fetchTracks = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:3001/api/playlists/${playlistId}/tracks`);
+        const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/tracks`);
         if (!res.ok) throw new Error('Failed to fetch playlist tracks');
 
         const data = await res.json();
-        const rawTracks = data.tracks?.map((t: any, i: number) => ({
+        const rawTracks = (data.tracks || []).map((t: Track, i: number) => ({
           ...t,
-          displayIndex: i + 1
-        })) || [];
-        setOriginalTracks(rawTracks);
-        setDisplayTracks(rawTracks);
-      } catch (err: any) {
+          displayIndex: i + 1,
+        }));
+
+        if (isMounted) {
+          setOriginalTracks(rawTracks);
+          setDisplayTracks(rawTracks);
+        }
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message);
+        if (isMounted && err instanceof Error) setError(err.message);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
+
     fetchTracks();
+
+    return () => {
+      isMounted = false;
+    };
   }, [playlistId]);
 
-  // Handle shuffling illusion
+  // Handle shuffling illusion during generation
   React.useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isGenerating && !isComplete) {
       interval = setInterval(() => {
-        setDisplayTracks(prev => {
+        setDisplayTracks((prev) => {
           const shuffled = [...prev];
           for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -79,7 +90,7 @@ export default function PlaylistModifierPage() {
           }
           return shuffled;
         });
-      }, 1500); // Slower shuffle every 1500ms
+      }, 1500);
     }
     return () => clearInterval(interval);
   }, [isGenerating, isComplete]);
@@ -91,8 +102,8 @@ export default function PlaylistModifierPage() {
     setError(null);
 
     try {
-      const res = await fetch(`http://127.0.0.1:3001/api/playlists/${playlistId}/drift`, {
-        method: 'POST'
+      const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/drift`, {
+        method: 'POST',
       });
 
       const data = await res.json();
@@ -102,17 +113,16 @@ export default function PlaylistModifierPage() {
       }
 
       // Final ordered tracks get a fresh 1..N index
-      const finalTracks = (data.tracks || []).map((t: any, i: number) => ({
+      const finalTracks = (data.tracks || []).map((t: Track, i: number) => ({
         ...t,
-        displayIndex: i + 1
+        displayIndex: i + 1,
       }));
       setDisplayTracks(finalTracks);
       setHarshTracks(data.harshTracks || []);
       setIsComplete(true);
-
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message);
+      if (err instanceof Error) setError(err.message);
       setDisplayTracks(originalTracks); // Revert to original on error
     } finally {
       setIsGenerating(false);
@@ -129,15 +139,15 @@ export default function PlaylistModifierPage() {
     setExportError(null);
 
     try {
-      const videoIds = displayTracks.map(t => t.videoId);
-      const res = await fetch('http://127.0.0.1:3001/api/playlists/export', {
+      const videoIds = displayTracks.map((t) => t.videoId);
+      const res = await fetch(`${env.apiUrl}/api/playlists/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: exportTitle.trim(),
           videoIds,
-          description: `Optimized playlist flow (${displayTracks.length} tracks) created with TuneIt.`
-        })
+          description: `Optimized playlist flow (${displayTracks.length} tracks) created with TuneIt.`,
+        }),
       });
 
       const data = await res.json();
@@ -146,9 +156,10 @@ export default function PlaylistModifierPage() {
       }
 
       setExportedPlaylistUrl(data.playlist?.url || `https://music.youtube.com/playlist?list=${data.playlist?.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Export Error]', err);
-      setExportError(err.message || 'Failed to export playlist');
+      if (err instanceof Error) setExportError(err.message);
+      else setExportError('Failed to export playlist');
     } finally {
       setIsExporting(false);
     }
@@ -165,7 +176,6 @@ export default function PlaylistModifierPage() {
       </header>
 
       <main className="max-w-6xl mx-auto py-10 px-6">
-
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4 mt-20">
             <Loader2 className="w-12 h-12 animate-spin text-brand-blue" />
@@ -180,11 +190,9 @@ export default function PlaylistModifierPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
             {/* LEFT COLUMN: Controls & Modes */}
             <div className="lg:col-span-5 sticky top-[100px]">
               <div className="bg-white neo-border border-black rounded-3xl p-6 relative">
-
                 {isComplete && (
                   <div className="absolute -top-6 -right-6 z-10">
                     <Sticker color="pink" rotation={10} size="sm">
@@ -202,7 +210,7 @@ export default function PlaylistModifierPage() {
 
                 {/* Modes Grid */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
-                  {flowModes.map(mode => {
+                  {flowModes.map((mode) => {
                     const isSelected = selectedMode === mode.id;
                     const isDisabled = isGenerating || isComplete;
 
@@ -212,25 +220,27 @@ export default function PlaylistModifierPage() {
                         disabled={isDisabled}
                         onClick={() => setSelectedMode(mode.id)}
                         className={cn(
-                          "text-left p-3 rounded-2xl border-2 border-black transition-all relative overflow-hidden flex flex-col",
+                          'text-left p-3 rounded-2xl border-2 border-black transition-all relative overflow-hidden flex flex-col',
                           isSelected
-                            ? "bg-black text-white shadow-none translate-y-1"
-                            : "bg-white hover:-translate-y-1 hover:neo-shadow active:translate-y-0 text-black",
-                          isDisabled && !isSelected && "opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none"
+                            ? 'bg-black text-white shadow-none translate-y-1'
+                            : 'bg-white hover:-translate-y-1 hover:neo-shadow active:translate-y-0 text-black',
+                          isDisabled && !isSelected && 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none'
                         )}
                       >
                         <div className="flex items-center gap-2 mb-2">
                           {mode.emoji && <span className="text-2xl">{mode.emoji}</span>}
                           <h3 className="font-black uppercase text-sm">{mode.title}</h3>
                         </div>
-                        <p className={cn(
-                          "font-mono text-[10px] leading-tight font-medium flex-1",
-                          isSelected ? "text-slate-300" : "text-slate-500"
-                        )}>
+                        <p
+                          className={cn(
+                            'font-mono text-[10px] leading-tight font-medium flex-1',
+                            isSelected ? 'text-slate-300' : 'text-slate-500'
+                          )}
+                        >
                           {mode.desc}
                         </p>
                       </button>
-                    )
+                    );
                   })}
                 </div>
 
@@ -257,7 +267,7 @@ export default function PlaylistModifierPage() {
                       ) : (
                         <span className="flex items-center gap-2">
                           <Play className="w-5 h-5 fill-current" />
-                          APPLY {flowModes.find(m => m.id === selectedMode)?.title.toUpperCase()} FLOW
+                          APPLY {flowModes.find((m) => m.id === selectedMode)?.title.toUpperCase()} FLOW
                         </span>
                       )}
                     </NeoButton>
@@ -275,7 +285,7 @@ export default function PlaylistModifierPage() {
                       color="yellow"
                       className="w-full justify-center h-14 font-black"
                       onClick={() => {
-                        setExportTitle(`TuneIt Flow - ${flowModes.find(m => m.id === selectedMode)?.title || 'Optimized'}`);
+                        setExportTitle(`TuneIt Flow - ${flowModes.find((m) => m.id === selectedMode)?.title || 'Optimized'}`);
                         setExportError(null);
                         setExportedPlaylistUrl(null);
                         setIsExportModalOpen(true);
@@ -298,13 +308,11 @@ export default function PlaylistModifierPage() {
                     </NeoButton>
                   </div>
                 )}
-
               </div>
             </div>
 
             {/* RIGHT COLUMN: Tracks Visualizer */}
             <div className="lg:col-span-7 space-y-6">
-
               {/* Main Sequence */}
               <div className="bg-white neo-border border-black rounded-3xl p-6 overflow-hidden">
                 <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-4">
@@ -326,10 +334,12 @@ export default function PlaylistModifierPage() {
                     </div>
                   )}
 
-                  <div className={cn(
-                    "transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2",
-                    isGenerating && "blur-[6px] opacity-40 grayscale-[30%] pointer-events-none overflow-hidden"
-                  )}>
+                  <div
+                    className={cn(
+                      'transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2',
+                      isGenerating && 'blur-[6px] opacity-40 grayscale-[30%] pointer-events-none overflow-hidden'
+                    )}
+                  >
                     <ul className="space-y-2 flex flex-col relative">
                       <AnimatePresence>
                         {displayTracks.map((track, idx) => (
@@ -339,10 +349,10 @@ export default function PlaylistModifierPage() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             transition={{
-                              type: "spring",
+                              type: 'spring',
                               stiffness: 80,
                               damping: 20,
-                              duration: 1.2
+                              duration: 1.2,
                             }}
                             key={track.videoId}
                             className="flex items-center gap-4 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white"
@@ -391,7 +401,7 @@ export default function PlaylistModifierPage() {
                   </div>
 
                   <p className="font-mono text-xs font-bold text-red-600 mb-4">
-                    These tracks completely ruined the {flowModes.find(m => m.id === selectedMode)?.title} aesthetic. We removed them to save your flow.
+                    These tracks completely ruined the {flowModes.find((m) => m.id === selectedMode)?.title} aesthetic. We removed them to save your flow.
                   </p>
 
                   <div className="max-h-[30vh] overflow-y-auto pr-2">
@@ -408,7 +418,6 @@ export default function PlaylistModifierPage() {
                   </div>
                 </motion.div>
               )}
-
             </div>
           </div>
         )}
@@ -510,7 +519,7 @@ export default function PlaylistModifierPage() {
                   <div>
                     <h2 className="text-2xl font-black uppercase text-slate-900">Playlist Exported!</h2>
                     <p className="font-mono text-xs font-bold text-slate-500 mt-1">
-                      "{exportTitle}" was successfully created on YouTube Music.
+                      &quot;{exportTitle}&quot; was successfully created on YouTube Music.
                     </p>
                   </div>
 

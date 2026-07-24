@@ -1,10 +1,38 @@
-import { google } from 'googleapis';
+import { google, youtube_v3 } from 'googleapis';
 import { googleConfig } from '../config/ytmusic';
+
+export interface YouTubeUserProfile {
+  id: string;
+  display_name: string;
+  email: string;
+  images: Array<{ url: string }>;
+}
+
+export interface YouTubePlaylistImage {
+  url: string;
+}
+
+export interface YouTubePlaylistItem {
+  id: string;
+  name: string;
+  description: string;
+  uri: string;
+  images: YouTubePlaylistImage[];
+  tracks: { total: number };
+}
+
+export interface YouTubeTrack {
+  videoId: string;
+  title: string;
+  artist: string;
+  tags: string[];
+  originalIndex: number;
+}
 
 export class YtMusicService {
   private static instance: YtMusicService;
   private oauth2Client: any;
-  private hasTokens: boolean = false;
+  private hasTokens = false;
 
   private constructor() {
     this.oauth2Client = new google.auth.OAuth2(
@@ -19,6 +47,25 @@ export class YtMusicService {
       YtMusicService.instance = new YtMusicService();
     }
     return YtMusicService.instance;
+  }
+
+  /**
+   * Helper getter for YouTube API client v3 using active OAuth client.
+   */
+  private getYoutubeClient(): youtube_v3.Youtube {
+    return google.youtube({
+      version: 'v3',
+      auth: this.oauth2Client,
+    });
+  }
+
+  /**
+   * Guards service methods to ensure an active Google session exists.
+   */
+  private ensureAuthenticated(): void {
+    if (!this.hasTokens) {
+      throw new Error('Unauthorized. No active Google session.');
+    }
   }
 
   /**
@@ -52,16 +99,11 @@ export class YtMusicService {
   /**
    * Fetches the user profile details (YouTube Channel info).
    */
-  public async getUserProfile(): Promise<any> {
-    if (!this.hasTokens) {
-      throw new Error('Unauthorized. No active Google session.');
-    }
+  public async getUserProfile(): Promise<YouTubeUserProfile> {
+    this.ensureAuthenticated();
 
     try {
-      const youtube = google.youtube({
-        version: 'v3',
-        auth: this.oauth2Client,
-      });
+      const youtube = this.getYoutubeClient();
 
       console.log('[YtMusicService] Fetching YouTube channel profile...');
       const response = await youtube.channels.list({
@@ -91,16 +133,11 @@ export class YtMusicService {
   /**
    * Fetches the playlists owned by the authenticated user.
    */
-  public async getUserPlaylists(): Promise<any> {
-    if (!this.hasTokens) {
-      throw new Error('Unauthorized. No active Google session.');
-    }
+  public async getUserPlaylists(): Promise<{ items: YouTubePlaylistItem[] }> {
+    this.ensureAuthenticated();
 
     try {
-      const youtube = google.youtube({
-        version: 'v3',
-        auth: this.oauth2Client,
-      });
+      const youtube = this.getYoutubeClient();
 
       console.log('[YtMusicService] Fetching playlists from YouTube...');
       const response = await youtube.playlists.list({
@@ -109,8 +146,8 @@ export class YtMusicService {
         maxResults: 50,
       });
 
-      const items = (response.data.items || []).map((pl: any) => ({
-        id: pl.id,
+      const items: YouTubePlaylistItem[] = (response.data.items || []).map((pl) => ({
+        id: pl.id || '',
         name: pl.snippet?.title || 'Untitled Playlist',
         description: pl.snippet?.description || '',
         uri: `youtube:playlist:${pl.id}`,
@@ -130,25 +167,20 @@ export class YtMusicService {
   /**
    * Fetches the tracks for a given playlist and gets their tags.
    */
-  public async getPlaylistTracks(playlistId: string): Promise<any[]> {
-    if (!this.hasTokens) {
-      throw new Error('Unauthorized. No active Google session.');
-    }
+  public async getPlaylistTracks(playlistId: string): Promise<YouTubeTrack[]> {
+    this.ensureAuthenticated();
 
     try {
-      const youtube = google.youtube({
-        version: 'v3',
-        auth: this.oauth2Client,
-      });
+      const youtube = this.getYoutubeClient();
 
       console.log(`[YtMusicService] Fetching items for playlist: ${playlistId}...`);
       let allItems: any[] = [];
-      let nextPageToken: string | undefined = undefined;
+      let nextPageToken: string | undefined;
 
       do {
-        const response: any = await youtube.playlistItems.list({
+        const response = await youtube.playlistItems.list({
           part: ['snippet'],
-          playlistId: playlistId,
+          playlistId,
           maxResults: 50,
           pageToken: nextPageToken,
         });
@@ -161,14 +193,17 @@ export class YtMusicService {
 
       console.log(`[YtMusicService] Fetched ${allItems.length} total items. Fetching video details...`);
 
-      const videoIds = allItems.map(item => item.snippet?.resourceId?.videoId).filter(Boolean) as string[];
+      const videoIds = allItems
+        .map((item) => item.snippet?.resourceId?.videoId)
+        .filter(Boolean) as string[];
 
       if (videoIds.length === 0) return [];
 
       let allVideos: any[] = [];
-      // YouTube videos.list maxResults is 50, so we must chunk videoIds
-      for (let i = 0; i < videoIds.length; i += 50) {
-        const chunk = videoIds.slice(i, i + 50);
+      // YouTube videos.list maxResults is 50, so chunk videoIds into batches of 50
+      const CHUNK_SIZE = 50;
+      for (let i = 0; i < videoIds.length; i += CHUNK_SIZE) {
+        const chunk = videoIds.slice(i, i + CHUNK_SIZE);
         const videoResponse = await youtube.videos.list({
           part: ['snippet'],
           id: chunk,
@@ -177,21 +212,19 @@ export class YtMusicService {
           allVideos = allVideos.concat(videoResponse.data.items);
         }
       }
-      
-      const tracks = allItems.map((item, index) => {
+
+      return allItems.map((item, index) => {
         const videoId = item.snippet?.resourceId?.videoId;
-        const video = allVideos.find(v => v.id === videoId);
-        
+        const video = allVideos.find((v) => v.id === videoId);
+
         return {
           videoId,
           title: item.snippet?.title || 'Unknown Title',
           artist: item.snippet?.videoOwnerChannelTitle || 'Unknown Artist',
           tags: video?.snippet?.tags || [],
-          originalIndex: index
+          originalIndex: index,
         };
       });
-
-      return tracks;
     } catch (err: any) {
       console.error('[YtMusicService] Error fetching playlist tracks:', err?.message || err);
       throw err;
@@ -202,15 +235,10 @@ export class YtMusicService {
    * Creates a new playlist on YouTube.
    */
   public async createPlaylist(title: string, description?: string): Promise<{ id: string; title: string; url: string }> {
-    if (!this.hasTokens) {
-      throw new Error('Unauthorized. No active Google session.');
-    }
+    this.ensureAuthenticated();
 
     try {
-      const youtube = google.youtube({
-        version: 'v3',
-        auth: this.oauth2Client,
-      });
+      const youtube = this.getYoutubeClient();
 
       console.log(`[YtMusicService] Creating playlist "${title}"...`);
       const response = await youtube.playlists.insert({
@@ -248,15 +276,10 @@ export class YtMusicService {
    * Adds video tracks to an existing playlist in order.
    */
   public async addTracksToPlaylist(playlistId: string, videoIds: string[]): Promise<void> {
-    if (!this.hasTokens) {
-      throw new Error('Unauthorized. No active Google session.');
-    }
+    this.ensureAuthenticated();
 
     try {
-      const youtube = google.youtube({
-        version: 'v3',
-        auth: this.oauth2Client,
-      });
+      const youtube = this.getYoutubeClient();
 
       console.log(`[YtMusicService] Adding ${videoIds.length} tracks to playlist ${playlistId}...`);
 
@@ -267,10 +290,10 @@ export class YtMusicService {
             part: ['snippet'],
             requestBody: {
               snippet: {
-                playlistId: playlistId,
+                playlistId,
                 resourceId: {
                   kind: 'youtube#video',
-                  videoId: videoId,
+                  videoId,
                 },
               },
             },

@@ -21,19 +21,13 @@ export function Sticker({
   pin = false,
   size = 'sm',
 }: StickerProps) {
-  // Generate a random slight rotation if none is provided to make it look organic
-  const [randomTilt, setRandomTilt] = React.useState(0);
-  const [randomDelay, setRandomDelay] = React.useState(0);
-  
-  React.useEffect(() => {
-    setRandomDelay(Math.random() * 2);
-    if (rotation === undefined) {
-      const timer = setTimeout(() => {
-        setRandomTilt((Math.random() - 0.5) * 8); // random angle between -4deg and +4deg
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [rotation]);
+  const [randomTilt] = React.useState(() =>
+    rotation !== undefined
+      ? rotation
+      : typeof window !== 'undefined'
+      ? (Math.random() - 0.5) * 8
+      : 0
+  );
 
   const tilt = rotation !== undefined ? rotation : randomTilt;
 

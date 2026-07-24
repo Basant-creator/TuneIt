@@ -60,13 +60,11 @@ function optimizeSequenceFlow(tracks: DriftTrack[]): DriftTrack[] {
 
         // If reversing the subsegment produces a smoother transition flow, swap
         if (newCost < currentCost - 0.02) {
-          // Reverse subsegment from i+1 to j
+          // Reverse subsegment from i+1 to j using clean array destructuring
           let left = i + 1;
           let right = j;
           while (left < right) {
-            const temp = result[left];
-            result[left] = result[right];
-            result[right] = temp;
+            [result[left], result[right]] = [result[right], result[left]];
             left++;
             right--;
           }
@@ -95,20 +93,13 @@ export function generateDriftPlaylist(rawTracks: DriftTrack[]): DriftResult {
   const UPPER_BPM_BOUND = 136;
   const MAX_INTENSITY = 0.65;
 
-  const filteredPool: DriftTrack[] = [];
-  const harshTracks: DriftTrack[] = [];
+  const isHarsh = (track: DriftTrack) =>
+    track.intensityScore > MAX_INTENSITY ||
+    track.estimatedBpm < LOWER_BPM_BOUND ||
+    track.estimatedBpm > UPPER_BPM_BOUND;
 
-  for (const track of rawTracks) {
-    if (
-      track.intensityScore > MAX_INTENSITY ||
-      track.estimatedBpm < LOWER_BPM_BOUND ||
-      track.estimatedBpm > UPPER_BPM_BOUND
-    ) {
-      harshTracks.push(track);
-    } else {
-      filteredPool.push(track);
-    }
-  }
+  const filteredPool = rawTracks.filter((track) => !isHarsh(track));
+  const harshTracks = rawTracks.filter(isHarsh);
 
   if (filteredPool.length === 0) {
     return { tracks: [], harshTracks };
@@ -121,18 +112,15 @@ export function generateDriftPlaylist(rawTracks: DriftTrack[]): DriftResult {
     ? (sortedByBpm[mid - 1].estimatedBpm + sortedByBpm[mid].estimatedBpm) / 2
     : sortedByBpm[mid].estimatedBpm;
 
-  let seedIndex = 0;
-  let minSeedScore = Infinity;
-
-  for (let i = 0; i < filteredPool.length; i++) {
-    const bpmDiff = Math.abs(filteredPool[i].estimatedBpm - medianBpm) / 30;
-    const intensityDiff = Math.abs(filteredPool[i].intensityScore - 0.25);
-    const score = bpmDiff + intensityDiff;
-    if (score < minSeedScore) {
-      minSeedScore = score;
-      seedIndex = i;
-    }
-  }
+  const { seedIndex } = filteredPool.reduce(
+    (best, track, i) => {
+      const bpmDiff = Math.abs(track.estimatedBpm - medianBpm) / 30;
+      const intensityDiff = Math.abs(track.intensityScore - 0.25);
+      const score = bpmDiff + intensityDiff;
+      return score < best.minScore ? { seedIndex: i, minScore: score } : best;
+    },
+    { seedIndex: 0, minScore: Infinity }
+  );
 
   const playlist: DriftTrack[] = [];
   const seedTrack = filteredPool.splice(seedIndex, 1)[0];

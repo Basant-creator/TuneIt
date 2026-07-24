@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { YtMusicService } from '../services/ytmusicService';
 import { googleConfig } from '../config/ytmusic';
+import { handleControllerError } from '../utils/errorHandler';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -8,11 +9,7 @@ export const login = async (req: Request, res: Response) => {
     const authUrl = ytmusicService.getAuthUrl();
     res.redirect(authUrl);
   } catch (err: any) {
-    console.error('[YtMusicController] Error during login redirect:', err?.message || err);
-    res.status(500).json({
-      error: 'Failed to initiate Google login flow',
-      details: err?.message || err,
-    });
+    handleControllerError(res, err, '[YtMusicController] Error during login redirect');
   }
 };
 
@@ -36,11 +33,7 @@ export const callback = async (req: Request, res: Response) => {
     // Redirect browser back to the frontend
     res.redirect(googleConfig.frontendUrl);
   } catch (err: any) {
-    console.error('[YtMusicController] Google token exchange failed:', err?.message || err);
-    res.status(400).json({
-      error: 'Invalid authorization code or token exchange failed',
-      details: err?.message || err,
-    });
+    handleControllerError(res, err, '[YtMusicController] Google token exchange failed', 400);
   }
 };
 
@@ -50,12 +43,7 @@ export const getMe = async (req: Request, res: Response) => {
     const profile = await ytmusicService.getUserProfile();
     res.json(profile);
   } catch (err: any) {
-    console.error('[YtMusicController] Error in getMe:', err?.message || err);
-    const statusCode = err?.message?.includes('session') || err?.message?.includes('Unauthorized') ? 401 : 500;
-    res.status(statusCode).json({
-      error: 'Failed to fetch YouTube profile',
-      details: err?.message || err,
-    });
+    handleControllerError(res, err, '[YtMusicController] Error in getMe');
   }
 };
 
@@ -65,12 +53,7 @@ export const getPlaylists = async (req: Request, res: Response) => {
     const playlists = await ytmusicService.getUserPlaylists();
     res.json(playlists);
   } catch (err: any) {
-    console.error('[YtMusicController] Error in getPlaylists:', err?.message || err);
-    const statusCode = err?.message?.includes('session') || err?.message?.includes('Unauthorized') ? 401 : 500;
-    res.status(statusCode).json({
-      error: 'Failed to fetch YouTube playlists',
-      details: err?.message || err,
-    });
+    handleControllerError(res, err, '[YtMusicController] Error in getPlaylists');
   }
 };
 
@@ -85,12 +68,7 @@ export const getPlaylistTracks = async (req: Request, res: Response) => {
     const tracks = await ytmusicService.getPlaylistTracks(id);
     res.json({ tracks });
   } catch (err: any) {
-    console.error(`[YtMusicController] Error fetching tracks for playlist ${id}:`, err?.message || err);
-    const statusCode = err?.message?.includes('session') || err?.message?.includes('Unauthorized') ? 401 : 500;
-    res.status(statusCode).json({
-      error: 'Failed to fetch playlist tracks',
-      details: err?.message || err,
-    });
+    handleControllerError(res, err, `[YtMusicController] Error fetching tracks for playlist ${id}`);
   }
 };
 
@@ -119,11 +97,6 @@ export const exportPlaylist = async (req: Request, res: Response) => {
       playlist: newPlaylist,
     });
   } catch (err: any) {
-    console.error('[YtMusicController] Error exporting playlist:', err?.message || err);
-    const statusCode = err?.message?.includes('session') || err?.message?.includes('Unauthorized') ? 401 : 500;
-    res.status(statusCode).json({
-      error: 'Failed to export playlist to YouTube Music',
-      details: err?.message || err,
-    });
+    handleControllerError(res, err, '[YtMusicController] Error exporting playlist');
   }
 };

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { YtMusicService } from '../services/ytmusicService';
 import { analyzeTrackMetadata } from '../services/aiService';
 import { generateDriftPlaylist, DriftTrack } from '../utils/driftAlgorithm';
+import { handleControllerError } from '../utils/errorHandler';
 import prisma from '../config/db';
 import Bottleneck from 'bottleneck';
 
@@ -10,7 +11,7 @@ const limiter = new Bottleneck({
   reservoirRefreshAmount: 14,
   reservoirRefreshInterval: 60000, // every 60 seconds
   maxConcurrent: 1,
-  minTime: 1000 // 1 second minimum between requests
+  minTime: 1000, // 1 second minimum between requests
 });
 
 export const driftRearrange = async (req: Request, res: Response) => {
@@ -37,7 +38,7 @@ export const driftRearrange = async (req: Request, res: Response) => {
 
       // Check cache first
       let dbTrack = await prisma.youtubeTrack.findUnique({
-        where: { videoId: track.videoId }
+        where: { videoId: track.videoId },
       });
 
       const isDefaultFallback = dbTrack && dbTrack.estimatedBpm === 120 && dbTrack.intensityScore === 0.5;
@@ -46,11 +47,13 @@ export const driftRearrange = async (req: Request, res: Response) => {
         // Run AI Analysis
         console.log(`[DriftController] Analyzing ${track.title} with Gemini AI...`);
         
-        const analysis = await limiter.schedule(() => analyzeTrackMetadata({
-          title: track.title,
-          artist: track.artist,
-          tags: track.tags
-        }));
+        const analysis = await limiter.schedule(() =>
+          analyzeTrackMetadata({
+            title: track.title,
+            artist: track.artist,
+            tags: track.tags,
+          })
+        );
 
         const estimatedBpm = analysis?.estimated_bpm || 120; // Default fallback
         const intensityScore = analysis?.intensity_score || 0.5;
@@ -63,8 +66,8 @@ export const driftRearrange = async (req: Request, res: Response) => {
               title: track.title.substring(0, 255),
               artist: track.artist.substring(0, 255),
               estimatedBpm,
-              intensityScore
-            }
+              intensityScore,
+            },
           });
         } else {
           // Update the existing corrupted/fallback record
@@ -75,7 +78,7 @@ export const driftRearrange = async (req: Request, res: Response) => {
               intensityScore,
               title: track.title.substring(0, 255),
               artist: track.artist.substring(0, 255),
-            }
+            },
           });
         }
       }
@@ -86,7 +89,7 @@ export const driftRearrange = async (req: Request, res: Response) => {
         artist: track.artist,
         estimatedBpm: dbTrack.estimatedBpm,
         intensityScore: dbTrack.intensityScore,
-        originalIndex: track.originalIndex
+        originalIndex: track.originalIndex,
       });
     }
 
@@ -99,14 +102,9 @@ export const driftRearrange = async (req: Request, res: Response) => {
       originalCount: driftTracks.length,
       filteredCount: harshTracks.length,
       tracks: rearrangedPlaylist,
-      harshTracks: harshTracks
+      harshTracks,
     });
-
   } catch (err: any) {
-    console.error('[DriftController] Error during drift rearrangement:', err?.message || err);
-    res.status(500).json({
-      error: 'Failed to apply Drift algorithm',
-      details: err?.message || err
-    });
+    handleControllerError(res, err, '[DriftController] Error during drift rearrangement');
   }
 };

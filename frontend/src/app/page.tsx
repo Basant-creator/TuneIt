@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { ArrowRight, Sparkles, Volume2, ListRestart, Heart } from 'lucide-react';
+import { ArrowRight, Sparkles, ListRestart, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/utils/cn';
@@ -11,13 +11,17 @@ import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { DoodleElement } from '@/components/DoodleElement';
 import { PlaylistCard } from '@/components/PlaylistCard';
-import { FlowModeCard } from '@/components/FlowModeCard';
 import { EnergyGraph } from '@/components/EnergyGraph';
 import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
 import { FlowSandbox } from '@/components/FlowSandbox';
 import { TextLogo } from '@/components/TextLogo';
 import { env } from '@/lib/env';
+
+interface UserProfile {
+  display_name?: string;
+  images?: Array<{ url: string }>;
+}
 
 export default function Home() {
   const router = useRouter();
@@ -30,11 +34,10 @@ export default function Home() {
     cm: ['f1', 'f2', 'f3', 'f4', 'f5'],
   });
 
-  const [userProfile, setUserProfile] = React.useState<any>(null);
-  const [playlists, setPlaylists] = React.useState<any[]>([]);
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
 
   React.useEffect(() => {
-    // ELIMINATE HARDCODED DEV URLS: Safe centralized environment variable URL lookup
+    let isMounted = true;
     fetch(`${env.apiUrl}/api/me`)
       .then((res) => {
         if (!res.ok) throw new Error('Unauthenticated');
@@ -42,19 +45,15 @@ export default function Home() {
       })
       .then((profile) => {
         console.log('[TuneIt Backend] Connected! Profile:', profile);
-        setUserProfile(profile);
-        return fetch(`${env.apiUrl}/api/playlists`);
-      })
-      .then((res) => (res ? res.json() : null))
-      .then((playlistsData) => {
-        if (playlistsData && playlistsData.items) {
-          console.log('[TuneIt Backend] Playlists fetched:', playlistsData.items);
-          setPlaylists(playlistsData.items);
-        }
+        if (isMounted) setUserProfile(profile);
       })
       .catch((err) => {
-        console.log('[TuneIt Backend] No active session or connection failed:', err.message);
+        console.log('[TuneIt Backend] No active session or connection failed:', err?.message || err);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
