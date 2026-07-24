@@ -2,14 +2,29 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Play, Sparkles, AlertCircle, Share2, CheckCircle2, ExternalLink, X, Music } from 'lucide-react';
+import {
+  ArrowLeft,
+  Loader2,
+  Play,
+  Sparkles,
+  AlertCircle,
+  Share2,
+  CheckCircle2,
+  ExternalLink,
+  X,
+  Music,
+  Plus,
+  Volume2,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { SpinningBlocks } from '@/components/SpinningBlocks';
+import { AudioPreviewModal } from '@/components/AudioPreviewModal';
 import { cn } from '@/utils/cn';
 import { flowModes } from '@/data/homeData';
 import { env } from '@/lib/env';
+import { decodeHtmlEntities } from '@/utils/decodeHtml';
 
 interface Track {
   videoId: string;
@@ -17,8 +32,18 @@ interface Track {
   artist: string;
   estimatedBpm?: number;
   intensityScore?: number;
+  vibeReview?: string;
   originalIndex?: number;
   displayIndex?: number;
+}
+
+interface RecommendedTrack {
+  videoId: string;
+  title: string;
+  artist: string;
+  estimatedBpm: number;
+  intensityScore: number;
+  vibeReview: string;
 }
 
 export default function PlaylistModifierPage() {
@@ -35,6 +60,14 @@ export default function PlaylistModifierPage() {
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Recommendations state
+  const [recommendations, setRecommendations] = React.useState<RecommendedTrack[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = React.useState(false);
+
+  // 15s Audio Preview Modal state
+  const [previewTrack, setPreviewTrack] = React.useState<Track | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
   // Export to YouTube Music modal state
   const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
@@ -100,6 +133,7 @@ export default function PlaylistModifierPage() {
 
     setIsGenerating(true);
     setError(null);
+    setRecommendations([]);
 
     try {
       const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/drift`, {
@@ -120,6 +154,9 @@ export default function PlaylistModifierPage() {
       setDisplayTracks(finalTracks);
       setHarshTracks(data.harshTracks || []);
       setIsComplete(true);
+
+      // Fetch related recommendations after optimization
+      fetchRecommendations();
     } catch (err: unknown) {
       console.error(err);
       if (err instanceof Error) setError(err.message);
@@ -127,6 +164,48 @@ export default function PlaylistModifierPage() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const fetchRecommendations = async () => {
+    setIsLoadingRecommendations(true);
+    try {
+      const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/recommendations`);
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendations(data.recommendations || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch recommendations:', err);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
+
+  const handleAddRecommendation = (recTrack: RecommendedTrack) => {
+    // Append recommended track to active display tracks
+    setDisplayTracks((prev) => {
+      const exists = prev.some((t) => t.videoId === recTrack.videoId);
+      if (exists) return prev;
+
+      const newTrack: Track = {
+        videoId: recTrack.videoId,
+        title: recTrack.title,
+        artist: recTrack.artist,
+        estimatedBpm: recTrack.estimatedBpm,
+        intensityScore: recTrack.intensityScore,
+        vibeReview: recTrack.vibeReview,
+        displayIndex: prev.length + 1,
+      };
+      return [...prev, newTrack];
+    });
+
+    // Remove added track from recommendation pool
+    setRecommendations((prev) => prev.filter((r) => r.videoId !== recTrack.videoId));
+  };
+
+  const handleOpenPreview = (track: Track) => {
+    setPreviewTrack(track);
+    setIsPreviewOpen(true);
   };
 
   const handleExportPlaylist = async () => {
@@ -302,6 +381,7 @@ export default function PlaylistModifierPage() {
                         setIsComplete(false);
                         setDisplayTracks(originalTracks);
                         setHarshTracks([]);
+                        setRecommendations([]);
                       }}
                     >
                       Reset and Try Again
@@ -311,7 +391,7 @@ export default function PlaylistModifierPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Tracks Visualizer */}
+            {/* RIGHT COLUMN: Tracks Visualizer & Related Song Recommendations */}
             <div className="lg:col-span-7 space-y-6">
               {/* Main Sequence */}
               <div className="bg-white neo-border border-black rounded-3xl p-6 overflow-hidden">
@@ -355,29 +435,41 @@ export default function PlaylistModifierPage() {
                               duration: 1.2,
                             }}
                             key={track.videoId}
-                            className="flex items-center gap-4 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white"
+                            className="flex items-center gap-3 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white"
                           >
                             <div className="w-8 h-8 rounded-full bg-brand-yellow neo-border border-black flex items-center justify-center font-black shrink-0 text-sm">
                               {track.displayIndex || idx + 1}
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-black text-sm truncate">{track.title}</h4>
-                              <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{track.artist}</p>
+                              <h4 className="font-black text-sm truncate" title={decodeHtmlEntities(track.title)}>{decodeHtmlEntities(track.title)}</h4>
+                              <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{decodeHtmlEntities(track.artist)}</p>
                             </div>
 
-                            {track.estimatedBpm && (
-                              <div className="flex gap-3 shrink-0 text-right">
-                                <div className="flex flex-col">
-                                  <span className="font-mono text-[9px] uppercase font-black text-slate-400">BPM</span>
-                                  <span className="font-black text-xs">{Math.round(track.estimatedBpm)}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {track.estimatedBpm && (
+                                <div className="flex gap-2 text-right hidden sm:flex">
+                                  <div className="flex flex-col">
+                                    <span className="font-mono text-[9px] uppercase font-black text-slate-400">BPM</span>
+                                    <span className="font-black text-xs">{Math.round(track.estimatedBpm)}</span>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="font-mono text-[9px] uppercase font-black text-slate-400">NRG</span>
+                                    <span className="font-black text-xs text-brand-pink">{track.intensityScore?.toFixed(2)}</span>
+                                  </div>
                                 </div>
-                                <div className="flex flex-col">
-                                  <span className="font-mono text-[9px] uppercase font-black text-slate-400">NRG</span>
-                                  <span className="font-black text-xs text-brand-pink">{track.intensityScore?.toFixed(2)}</span>
-                                </div>
-                              </div>
-                            )}
+                              )}
+
+                              {/* 15s Snippet Preview Trigger Button */}
+                              <button
+                                onClick={() => handleOpenPreview(track)}
+                                title="Listen to 15s Snippet & AI Review"
+                                className="bg-brand-pink text-white neo-border-xs px-2 py-1 rounded-lg text-[10px] font-black uppercase font-mono hover:scale-105 transition-transform flex items-center gap-1"
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                                <span className="hidden md:inline">15s Snippet</span>
+                              </button>
+                            </div>
                           </motion.li>
                         ))}
                       </AnimatePresence>
@@ -385,6 +477,78 @@ export default function PlaylistModifierPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Related Song Recommendations ("Next Up / Vibe Extensions") */}
+              {isComplete && (
+                <div className="bg-[#FFFDE8] neo-border border-black rounded-3xl p-6 relative">
+                  <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-3">
+                    <div>
+                      <h3 className="text-lg font-black uppercase text-black flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-brand-orange fill-current" />
+                        Recommended Next Up (Vibe Extensions)
+                      </h3>
+                      <p className="font-mono text-xs font-bold text-slate-600 mt-0.5">
+                        Hand-picked songs related to your playlist vibe. Click &quot;Add to Flow&quot; to append.
+                      </p>
+                    </div>
+                  </div>
+
+                  {isLoadingRecommendations ? (
+                    <div className="flex items-center justify-center py-8 gap-3 font-mono text-xs font-black">
+                      <Loader2 className="w-6 h-6 animate-spin text-brand-pink" />
+                      Analyzing vibe continuation...
+                    </div>
+                  ) : recommendations.length === 0 ? (
+                    <div className="text-center py-6 font-mono text-xs text-slate-500 font-bold">
+                      No additional recommendations found.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {recommendations.map((rec) => (
+                        <div
+                          key={rec.videoId}
+                          className="bg-white neo-border-sm p-3 rounded-2xl flex flex-col justify-between gap-3 text-xs shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start gap-2 mb-1">
+                              <h4 className="font-black truncate text-xs text-black leading-tight flex-1" title={decodeHtmlEntities(rec.title)}>
+                                {decodeHtmlEntities(rec.title)}
+                              </h4>
+                              <span className="bg-brand-yellow font-mono font-black text-[9px] px-1.5 py-0.5 rounded border border-black shrink-0">
+                                {rec.estimatedBpm} BPM
+                              </span>
+                            </div>
+                            <p className="font-mono text-[10px] text-slate-500 font-bold truncate mb-2">
+                              {decodeHtmlEntities(rec.artist)}
+                            </p>
+                            <p className="font-mono text-[9.5px] text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200 line-clamp-2 leading-relaxed">
+                              &quot;{decodeHtmlEntities(rec.vibeReview)}&quot;
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1 border-t border-dashed border-slate-200">
+                            <button
+                              onClick={() => handleOpenPreview(rec)}
+                              className="flex-1 bg-white neo-border-xs text-black py-1.5 px-2 rounded-lg font-mono font-bold text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-slate-100 transition-colors"
+                            >
+                              <Volume2 className="w-3.5 h-3.5 text-brand-pink" />
+                              Preview 15s
+                            </button>
+
+                            <button
+                              onClick={() => handleAddRecommendation(rec)}
+                              className="flex-1 bg-brand-yellow neo-border-xs text-black py-1.5 px-2 rounded-lg font-mono font-black text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-brand-yellow/80 transition-colors"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              Add to Flow
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Harsh Tracks Excluded */}
               {isComplete && harshTracks.length > 0 && (
@@ -409,8 +573,8 @@ export default function PlaylistModifierPage() {
                       {harshTracks.map((track) => (
                         <li key={track.videoId} className="bg-white border-2 border-red-500 p-2 rounded-xl flex items-center gap-3">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-black text-[11px] truncate">{track.title}</h4>
-                            <p className="font-mono text-[9px] text-slate-500 truncate">{track.artist}</p>
+                            <h4 className="font-black text-[11px] truncate">{decodeHtmlEntities(track.title)}</h4>
+                            <p className="font-mono text-[9px] text-slate-500 truncate">{decodeHtmlEntities(track.artist)}</p>
                           </div>
                         </li>
                       ))}
@@ -422,6 +586,13 @@ export default function PlaylistModifierPage() {
           </div>
         )}
       </main>
+
+      {/* 15s AUDIO PREVIEW & AI REVIEW MODAL */}
+      <AudioPreviewModal
+        track={previewTrack}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+      />
 
       {/* EXPORT TO YOUTUBE MUSIC MODAL */}
       <AnimatePresence>

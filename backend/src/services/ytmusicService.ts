@@ -312,6 +312,39 @@ export class YtMusicService {
   }
 
   /**
+   * Searches YouTube for a track by query string (title + artist).
+   */
+  public async searchTrack(query: string): Promise<YouTubeTrack | null> {
+    this.ensureAuthenticated();
+
+    try {
+      const youtube = this.getYoutubeClient();
+
+      // Append 'topic audio' to prioritize official embeddable YouTube Topic releases over VEVO blocked videos
+      const response = await youtube.search.list({
+        part: ['snippet'],
+        q: `${query} topic audio`,
+        type: ['video'],
+        maxResults: 1,
+      });
+
+      const item = response.data.items?.[0];
+      if (!item || !item.id?.videoId) return null;
+
+      return {
+        videoId: item.id.videoId,
+        title: item.snippet?.title || query,
+        artist: item.snippet?.channelTitle || 'Unknown Artist',
+        tags: [],
+        originalIndex: 0,
+      };
+    } catch (err: any) {
+      console.error(`[YtMusicService] Error searching track for query "${query}":`, err?.message || err);
+      return null;
+    }
+  }
+
+  /**
    * Checks if a session exists.
    */
   public hasSession(): boolean {

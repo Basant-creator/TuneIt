@@ -100,3 +100,50 @@ export const exportPlaylist = async (req: Request, res: Response) => {
     handleControllerError(res, err, '[YtMusicController] Error exporting playlist');
   }
 };
+
+export const getRecommendations = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Playlist ID is required' });
+  }
+
+  try {
+    const ytmusicService = YtMusicService.getInstance();
+    const tracks = await ytmusicService.getPlaylistTracks(id);
+    if (tracks.length === 0) {
+      return res.json({ recommendations: [] });
+    }
+
+    const { getRecommendedTracks, analyzeTrackMetadata } = await import('../services/aiService');
+
+    // Take up to 4 seed tracks
+    const seedTracks = tracks.slice(-4);
+    const proposals = await getRecommendedTracks(seedTracks);
+
+    const recommendations = [];
+    for (const prop of proposals) {
+      const searchRes = await ytmusicService.searchTrack(`${prop.title} ${prop.artist}`);
+      if (!searchRes || !searchRes.videoId) continue;
+
+      const aiMeta = await analyzeTrackMetadata({
+        title: searchRes.title,
+        artist: searchRes.artist,
+        tags: [],
+      });
+
+      recommendations.push({
+        videoId: searchRes.videoId,
+        title: searchRes.title,
+        artist: searchRes.artist,
+        estimatedBpm: aiMeta?.estimated_bpm || 122,
+        intensityScore: aiMeta?.intensity_score || 0.45,
+        vibeReview: aiMeta?.vibe_review || prop.rationale || 'Seamless energy continuation with matching harmonic flow.',
+      });
+    }
+
+    res.json({ recommendations });
+  } catch (err: any) {
+    handleControllerError(res, err, `[YtMusicController] Error generating recommendations for playlist ${id}`);
+  }
+};
+
