@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const ytmusicController_1 = require("../controllers/ytmusicController");
+const driftController_1 = require("../controllers/driftController");
+const router = (0, express_1.Router)();
+router.get('/me', ytmusicController_1.getMe);
+router.get('/playlists', ytmusicController_1.getPlaylists);
+router.get('/playlists/:id/tracks', ytmusicController_1.getPlaylistTracks);
+router.get('/playlists/:id/recommendations', ytmusicController_1.getRecommendations);
+router.post('/playlists/:id/drift', driftController_1.driftRearrange);
+router.post('/playlists/export', ytmusicController_1.exportPlaylist);
+exports.default = router;

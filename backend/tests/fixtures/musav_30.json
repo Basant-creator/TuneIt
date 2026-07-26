@@ -1,0 +1,242 @@
+[
+  {
+    "id": "musav_001",
+    "title": "Take Five",
+    "artist": "Dave Brubeck",
+    "bpm": 174,
+    "intensity": 0.28,
+    "valence": 0.65
+  },
+  {
+    "id": "musav_002",
+    "title": "Autumn Leaves",
+    "artist": "Cannonball Adderley & Miles Davis",
+    "bpm": 115,
+    "intensity": 0.32,
+    "valence": 0.55
+  },
+  {
+    "id": "musav_003",
+    "title": "Hotel California",
+    "artist": "Eagles",
+    "bpm": 147,
+    "intensity": 0.45,
+    "valence": 0.58
+  },
+  {
+    "id": "musav_004",
+    "title": "Sultans of Swing",
+    "artist": "Dire Straits",
+    "bpm": 148,
+    "intensity": 0.65,
+    "valence": 0.82
+  },
+  {
+    "id": "musav_005",
+    "title": "Fly Me to the Moon",
+    "artist": "Frank Sinatra",
+    "bpm": 118,
+    "intensity": 0.42,
+    "valence": 0.75
+  },
+  {
+    "id": "musav_006",
+    "title": "So What",
+    "artist": "Miles Davis",
+    "bpm": 136,
+    "intensity": 0.35,
+    "valence": 0.60
+  },
+  {
+    "id": "musav_007",
+    "title": "Voodoo Child (Slight Return)",
+    "artist": "Jimi Hendrix",
+    "bpm": 112,
+    "intensity": 0.88,
+    "valence": 0.45
+  },
+  {
+    "id": "musav_008",
+    "title": "Stairway to Heaven",
+    "artist": "Led Zeppelin",
+    "bpm": 82,
+    "intensity": 0.58,
+    "valence": 0.50
+  },
+  {
+    "id": "musav_009",
+    "title": "Little Wing",
+    "artist": "Stevie Ray Vaughan",
+    "bpm": 68,
+    "intensity": 0.52,
+    "valence": 0.58
+  },
+  {
+    "id": "musav_010",
+    "title": "'Round Midnight",
+    "artist": "Thelonious Monk",
+    "bpm": 62,
+    "intensity": 0.15,
+    "valence": 0.40
+  },
+  {
+    "id": "musav_011",
+    "title": "Layla (Unplugged)",
+    "artist": "Eric Clapton",
+    "bpm": 94,
+    "intensity": 0.48,
+    "valence": 0.70
+  },
+  {
+    "id": "musav_012",
+    "title": "Sing, Sing, Sing",
+    "artist": "Benny Goodman",
+    "bpm": 220,
+    "intensity": 0.92,
+    "valence": 0.88
+  },
+  {
+    "id": "musav_013",
+    "title": "Texas Flood",
+    "artist": "Stevie Ray Vaughan",
+    "bpm": 60,
+    "intensity": 0.72,
+    "valence": 0.40
+  },
+  {
+    "id": "musav_014",
+    "title": "Black Magic Woman",
+    "artist": "Santana",
+    "bpm": 128,
+    "intensity": 0.62,
+    "valence": 0.68
+  },
+  {
+    "id": "musav_015",
+    "title": "What a Wonderful World",
+    "artist": "Louis Armstrong",
+    "bpm": 76,
+    "intensity": 0.22,
+    "valence": 0.80
+  },
+  {
+    "id": "musav_016",
+    "title": "Crossroads",
+    "artist": "Cream",
+    "bpm": 130,
+    "intensity": 0.78,
+    "valence": 0.72
+  },
+  {
+    "id": "musav_017",
+    "title": "Take the A Train",
+    "artist": "Duke Ellington",
+    "bpm": 165,
+    "intensity": 0.55,
+    "valence": 0.85
+  },
+  {
+    "id": "musav_018",
+    "title": "Sweet Home Chicago",
+    "artist": "Robert Johnson",
+    "bpm": 105,
+    "intensity": 0.38,
+    "valence": 0.62
+  },
+  {
+    "id": "musav_019",
+    "title": "Johnny B. Goode",
+    "artist": "Chuck Berry",
+    "bpm": 168,
+    "intensity": 0.85,
+    "valence": 0.90
+  },
+  {
+    "id": "musav_020",
+    "title": "My Favorite Things",
+    "artist": "John Coltrane",
+    "bpm": 138,
+    "intensity": 0.50,
+    "valence": 0.65
+  },
+  {
+    "id": "musav_021",
+    "title": "Comfortably Numb",
+    "artist": "Pink Floyd",
+    "bpm": 127,
+    "intensity": 0.68,
+    "valence": 0.48
+  },
+  {
+    "id": "musav_022",
+    "title": "Free Bird",
+    "artist": "Lynyrd Skynyrd",
+    "bpm": 118,
+    "intensity": 0.90,
+    "valence": 0.75
+  },
+  {
+    "id": "musav_023",
+    "title": "The Thrill Is Gone",
+    "artist": "B.B. King",
+    "bpm": 90,
+    "intensity": 0.44,
+    "valence": 0.45
+  },
+  {
+    "id": "musav_024",
+    "title": "Wave",
+    "artist": "Antonio Carlos Jobim",
+    "bpm": 132,
+    "intensity": 0.30,
+    "valence": 0.72
+  },
+  {
+    "id": "musav_025",
+    "title": "Classical Gas",
+    "artist": "Mason Williams",
+    "bpm": 140,
+    "intensity": 0.60,
+    "valence": 0.78
+  },
+  {
+    "id": "musav_026",
+    "title": "Tears in Heaven",
+    "artist": "Eric Clapton",
+    "bpm": 78,
+    "intensity": 0.25,
+    "valence": 0.42
+  },
+  {
+    "id": "musav_027",
+    "title": "Cantaloupe Island",
+    "artist": "Herbie Hancock",
+    "bpm": 98,
+    "intensity": 0.46,
+    "valence": 0.65
+  },
+  {
+    "id": "musav_028",
+    "title": "Dust in the Wind",
+    "artist": "Kansas",
+    "bpm": 96,
+    "intensity": 0.32,
+    "valence": 0.45
+  },
+  {
+    "id": "musav_029",
+    "title": "All Blues",
+    "artist": "Miles Davis",
+    "bpm": 140,
+    "intensity": 0.36,
+    "valence": 0.58
+  },
+  {
+    "id": "musav_030",
+    "title": "Blue Bossa",
+    "artist": "Joe Henderson",
+    "bpm": 160,
+    "intensity": 0.48,
+    "valence": 0.70
+  }
+]
