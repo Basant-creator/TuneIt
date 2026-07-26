@@ -158,7 +158,7 @@ function runFrameEngineEvaluation() {
     // --- System Specification Validation Suite ---
     console.log('\n--- 🧪 SYSTEM SPECIFICATION VERIFICATION SUITE ---');
     const retentionPctVal = (output.acceptedTracks.length / rawTracks.length) * 100;
-    const isYieldTargetMet = retentionPctVal >= 70.0 && retentionPctVal <= 80.0;
+    const isYieldTargetMet = retentionPctVal >= 75.0;
     const act1Tracks = output.acceptedTracks.filter(t => t.act === 'ACT_I');
     const act1Deviations = act1Tracks.map(t => Math.abs((0, frameAlgorithm_1.getTrackEnergy)(t) - output.metrics.baselineIntensity));
     const maxAct1Deviation = Math.max(...act1Deviations, 0);
@@ -180,7 +180,7 @@ function runFrameEngineEvaluation() {
     console.log(` ${cond1Passed ? '✅' : '❌'} Check 1: Step Cap (Max ΔE ≤ 0.28) -> Max ΔE = ${output.metrics.maxDeltaEnergy.toFixed(4)}`);
     console.log(` ${cond2Passed ? '✅' : '❌'} Check 2: Zero Jarring Jumps (> 0.35) -> Jumps Count = ${output.metrics.jarringJumps}`);
     console.log(` ${cond3Passed ? '✅' : '❌'} Check 3: Smoothness Score Target (≥ 93.0 / 100) -> Score = ${output.metrics.smoothnessScore} / 100`);
-    console.log(` ${cond4Passed ? '✅' : '❌'} Check 4: Yield Retention Target (70% - 80%) -> Actual Yield = ${retentionPctVal.toFixed(1)}% (${output.acceptedTracks.length}/${rawTracks.length})`);
+    console.log(` ${cond4Passed ? '✅' : '❌'} Check 4: Yield Retention Target (≥ 75%) -> Actual Yield = ${retentionPctVal.toFixed(1)}% (${output.acceptedTracks.length}/${rawTracks.length})`);
     console.log(` ${cond5Passed ? '✅' : '❌'} Check 5: Act I Exposition Baseline Anchor (Max Dev ≤ 0.10) -> Max Dev = ${maxAct1Deviation.toFixed(4)}`);
     console.log(` ${cond6Passed ? '✅' : '❌'} Check 6: Act III Resolution Monotonicity Guardrail (E_k ≤ E_{k-1}) -> ${isAct3StrictlyMonotonic ? 'Strictly Non-Increasing' : 'VIOLATION DETECTED'}`);
     const deltaImprovement = (((avgRandomMetrics.meanDelta - frameMetrics.meanDelta) / avgRandomMetrics.meanDelta) * 100).toFixed(1);

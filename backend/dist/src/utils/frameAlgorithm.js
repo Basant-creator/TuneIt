@@ -1,9 +1,9 @@
 "use strict";
 /**
- * Frame Algorithm (Cinematic Sequencing Engine)
+ * Frame Algorithm (Dynamic Cinematic Sequencing Engine)
  *
- * Sequences an unorganized music track pool into a structured 3-Act narrative trajectory
- * (Exposition -> Dynamic Arc -> Monotonic Resolution) through filtering and trajectory constraints.
+ * Sequences any input music track pool (whether high-energy, balanced, or low-energy/chill)
+ * into a dynamic 3-Act narrative trajectory (Exposition -> Dynamic Arc -> Monotonic Resolution).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processFrameEngine = void 0;
@@ -112,12 +112,12 @@ function computeSmoothnessScore(tracks) {
     };
 }
 /**
- * Core Frame Algorithm Pipeline.
+ * Core Frame Algorithm Pipeline (Fully Dynamic across High, Medium, and Low-Energy Playlists).
  * Sequences input music track pool into a 3-Act Cinematic Narrative Arc.
  *
  * ACT I: Exposition (Character Baseline, anchored μ ± 0.10, flat trajectory ΔE ≤ 0.10)
- * ACT II: Dynamic Arc (Climax / Valley, Incline Ramp to top 1-2 peak tracks, no Climax Bloat)
- * ACT III: Resolution (STRICT Monotonic Glideway, E_k <= E_{k-1})
+ * ACT II: Dynamic Arc (Climax or Ambient Valley, Auto-detected via Skewness)
+ * ACT III: Resolution (Strict Monotonic Glideway or Escalation)
  */
 function processFrameAlgorithm(inputTracks) {
     if (inputTracks.length === 0) {
@@ -144,42 +144,72 @@ function processFrameAlgorithm(inputTracks) {
     const variance = computeVariance(initialIntensities, baselineIntensity);
     const stdDev = Math.sqrt(variance);
     const skewness = computeSkewness(initialIntensities, baselineIntensity, stdDev);
+    // Dynamically determine Act Direction:
     const actDirection = skewness >= 0 ? 'SPIKE_AND_TANK' : 'TANK_AND_SPIKE';
     // --- Phase B: Rejection Filter (Hard Gates) ---
     const rejectedTracks = [];
     let candidatePool = [...inputTracks];
     // Gate 1: Boundary Stall (< 65 BPM or > 170 BPM)
+    // Low/high BPM tracks are NOT rejected needlessly if they can be smoothly bridged without causing a step > 0.28
     const bpmPassed = [];
     for (const track of candidatePool) {
         if (track.bpm < 65 || track.bpm > 170) {
-            rejectedTracks.push({
-                track,
-                reason: `Boundary Stall: Extreme BPM outlier (${track.bpm} BPM < 65 or > 170)`
-            });
+            const reachable = isReachableFromBaseline(track, candidatePool, baselineIntensity, 0.28);
+            if (!reachable) {
+                rejectedTracks.push({
+                    track,
+                    reason: `Boundary Stall: Extreme BPM outlier (${track.bpm} BPM < 65 or > 170) with no bridge track available`
+                });
+            }
+            else {
+                bpmPassed.push(track);
+            }
         }
         else {
             bpmPassed.push(track);
         }
     }
     candidatePool = bpmPassed;
-    // Gate 2: Climax Bloat (> 0.75 intensity, retain top 2 peak tracks)
-    const peakTracks = candidatePool.filter(t => getTrackEnergy(t) > 0.75);
-    if (peakTracks.length > 2) {
-        peakTracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
-        const allowedPeakIds = new Set(peakTracks.slice(0, 2).map(t => t.id));
-        const climaxPassed = [];
-        for (const track of candidatePool) {
-            if (getTrackEnergy(track) > 0.75 && !allowedPeakIds.has(track.id)) {
-                rejectedTracks.push({
-                    track,
-                    reason: `Climax Bloat: Exceeds top 2 extreme peak tracks (${getTrackEnergy(track).toFixed(2)} intensity > 0.75)`
-                });
+    // Gate 2: Climax / Valley Bloat
+    if (actDirection === 'SPIKE_AND_TANK') {
+        const peakTracks = candidatePool.filter(t => getTrackEnergy(t) > 0.75);
+        if (peakTracks.length > 2) {
+            peakTracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
+            const allowedPeakIds = new Set(peakTracks.slice(0, 2).map(t => t.id));
+            const climaxPassed = [];
+            for (const track of candidatePool) {
+                if (getTrackEnergy(track) > 0.75 && !allowedPeakIds.has(track.id)) {
+                    rejectedTracks.push({
+                        track,
+                        reason: `Climax Bloat: Exceeds top 2 extreme peak tracks (${getTrackEnergy(track).toFixed(2)} intensity > 0.75)`
+                    });
+                }
+                else {
+                    climaxPassed.push(track);
+                }
             }
-            else {
-                climaxPassed.push(track);
-            }
+            candidatePool = climaxPassed;
         }
-        candidatePool = climaxPassed;
+    }
+    else {
+        const valleyTracks = candidatePool.filter(t => getTrackEnergy(t) < 0.15);
+        if (valleyTracks.length > 2) {
+            valleyTracks.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+            const allowedValleyIds = new Set(valleyTracks.slice(0, 2).map(t => t.id));
+            const valleyPassed = [];
+            for (const track of candidatePool) {
+                if (getTrackEnergy(track) < 0.15 && !allowedValleyIds.has(track.id)) {
+                    rejectedTracks.push({
+                        track,
+                        reason: `Valley Bloat: Exceeds bottom 2 extreme valley tracks (${getTrackEnergy(track).toFixed(2)} intensity < 0.15)`
+                    });
+                }
+                else {
+                    valleyPassed.push(track);
+                }
+            }
+            candidatePool = valleyPassed;
+        }
     }
     // Gate 3: Step Violations / Transition Outliers (Δ Intensity > 0.28 from baseline with no bridge tracks)
     const transitionPassed = [];
@@ -228,7 +258,7 @@ function processFrameAlgorithm(inputTracks) {
     const act2Count = Math.max(1, totalAccepted - act1Count - act3Count);
     let pool = [...candidatePool];
     // 2. ACT I: Exposition (Character Baseline)
-    // Anchored within baseline μ ± 0.10, flat/minimal slope (ΔE ≤ 0.10)
+    // Anchored around baseline μ ± 0.10 (dynamically matching low/high baseline)
     const act1Candidates = pool
         .filter(t => Math.abs(getTrackEnergy(t) - baselineIntensity) <= 0.10)
         .sort((a, b) => Math.abs(getTrackEnergy(a) - baselineIntensity) - Math.abs(getTrackEnergy(b) - baselineIntensity));
@@ -252,53 +282,58 @@ function processFrameAlgorithm(inputTracks) {
         act3Tracks = pool.slice(0, act3Count);
         act2Pool = pool.slice(act3Count);
         // ACT II: Dynamic Arc (Climax Ramp to peak 1-2 tracks at ~60% mark)
+        // Interleave non-climax tracks so rising and falling phases are evenly matched
         act2Pool.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
         const climaxTrack = act2Pool[act2Pool.length - 1];
         const nonClimax = act2Pool.slice(0, act2Pool.length - 1);
-        const climaxTargetIdx = Math.floor(act2Count * 0.6);
-        const risingCount = Math.min(climaxTargetIdx, nonClimax.length);
-        const risingTracks = nonClimax.slice(0, risingCount).sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
-        const fallingTracks = nonClimax.slice(risingCount).sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
+        const climaxTargetIdx = Math.floor((act2Pool.length - 1) * 0.5);
+        const risingTracks = [];
+        const fallingTracks = [];
+        nonClimax.forEach((track, idx) => {
+            if (idx % 2 === 0 && risingTracks.length < climaxTargetIdx) {
+                risingTracks.push(track);
+            }
+            else {
+                fallingTracks.push(track);
+            }
+        });
+        risingTracks.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+        fallingTracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
         act2Pool = [...risingTracks, climaxTrack, ...fallingTracks];
     }
     else {
-        // VALLEY
+        // TANK_AND_SPIKE (Ambient Valley Narrative Arc for Low-Energy Pools)
         act3Tracks = pool.slice(pool.length - act3Count);
         act2Pool = pool.slice(0, pool.length - act3Count);
         act2Pool.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
         const valleyTrack = act2Pool[0];
         const nonValley = act2Pool.slice(1);
-        const valleyTargetIdx = Math.floor(act2Count * 0.6);
-        const fallingCount = Math.min(valleyTargetIdx, nonValley.length);
-        const fallingTracks = nonValley.slice(0, fallingCount).sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
-        const risingTracks = nonValley.slice(fallingCount).sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+        const valleyTargetIdx = Math.floor((act2Pool.length - 1) * 0.5);
+        const fallingTracks = [];
+        const risingTracks = [];
+        nonValley.forEach((track, idx) => {
+            if (idx % 2 === 0 && fallingTracks.length < valleyTargetIdx) {
+                fallingTracks.push(track);
+            }
+            else {
+                risingTracks.push(track);
+            }
+        });
+        fallingTracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
+        risingTracks.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
         act2Pool = [...fallingTracks, valleyTrack, ...risingTracks];
     }
-    // 4. ACT III: Resolution (STRICT Monotonic Glideway, E_k <= E_{k-1})
-    // Sort Act III strictly non-increasing to guarantee zero upward energy spikes
-    act3Tracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
-    // Assemble raw combined track sequence
-    const fullRaw = [...act1Tracks, ...act2Pool, ...act3Tracks];
-    // Boundary transition step smoothing pass (maintains step <= 0.28 while respecting Act III monotonicity)
-    for (let i = 0; i < fullRaw.length - 1; i++) {
-        const delta = Math.abs(getTrackEnergy(fullRaw[i + 1]) - getTrackEnergy(fullRaw[i]));
-        if (delta > 0.28) {
-            for (let j = i + 2; j < Math.min(fullRaw.length, i + 6); j++) {
-                // Do not swap into Act III if it violates Act III strictly non-increasing order
-                if (i >= act1Count + act2Count) {
-                    break; // Preserve strict Act III monotonicity
-                }
-                const testDelta1 = Math.abs(getTrackEnergy(fullRaw[j]) - getTrackEnergy(fullRaw[i]));
-                const testDelta2 = Math.abs(getTrackEnergy(fullRaw[i + 1]) - getTrackEnergy(fullRaw[j - 1]));
-                if (testDelta1 <= 0.28 && testDelta2 <= 0.28) {
-                    const temp = fullRaw[i + 1];
-                    fullRaw[i + 1] = fullRaw[j];
-                    fullRaw[j] = temp;
-                    break;
-                }
-            }
-        }
+    // 4. ACT III: Resolution (STRICT Monotonic Glideway or Escalation)
+    if (actDirection === 'SPIKE_AND_TANK') {
+        // Monotonic Downward Glideway (E_k <= E_{k-1})
+        act3Tracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
     }
+    else {
+        // Monotonic Upward Escalation (E_k >= E_{k-1})
+        act3Tracks.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+    }
+    // Assemble raw combined track sequence
+    let fullRaw = [...act1Tracks, ...act2Pool, ...act3Tracks];
     // Re-assign act markers based on track index boundaries
     const finalAct1 = fullRaw.slice(0, act1Count).map(t => ({ ...t, act: 'ACT_I' }));
     const finalAct2 = fullRaw.slice(act1Count, act1Count + act2Count).map(t => ({ ...t, act: 'ACT_II' }));

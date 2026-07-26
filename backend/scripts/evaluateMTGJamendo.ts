@@ -3,6 +3,7 @@ import path from 'path';
 import { performance } from 'perf_hooks';
 import { processFrameAlgorithm, getTrackEnergy, Track as FrameTrack } from '../src/utils/frameAlgorithm';
 import { generateDriftPlaylist, DriftTrack } from '../src/utils/driftAlgorithm';
+import { processUnhingedAlgorithm } from '../src/utils/unhingedAlgorithm';
 
 interface ScaleResult {
   engineName: string;
@@ -134,6 +135,49 @@ function evaluateDriftOnPool(pool: FrameTrack[], engineLabel: string): ScaleResu
   };
 }
 
+function evaluateUnhingedOnPool(pool: FrameTrack[], engineLabel: string): ScaleResult {
+  const start = performance.now();
+  const output = processUnhingedAlgorithm(pool);
+  const end = performance.now();
+
+  const executionTimeMs = Number((end - start).toFixed(2));
+  const throughputPerSec = Math.round((pool.length / (executionTimeMs || 1)) * 1000);
+
+  const accepted = output.sequencedTracks;
+  const rejectedCount = output.rejectedTracks.length;
+  const retentionPct = ((accepted.length / pool.length) * 100).toFixed(1) + '%';
+
+  let totalDelta = 0;
+  let maxDelta = 0;
+  let jarringJumps = 0;
+
+  for (let i = 0; i < accepted.length - 1; i++) {
+    const e1 = accepted[i].arousal ?? accepted[i].intensity ?? 0;
+    const e2 = accepted[i + 1].arousal ?? accepted[i + 1].intensity ?? 0;
+    const d = Math.abs(e2 - e1);
+    totalDelta += d;
+    if (d > maxDelta) maxDelta = d;
+    if (d > 0.35) jarringJumps++;
+  }
+
+  const meanDelta = accepted.length > 1 ? totalDelta / (accepted.length - 1) : 0;
+  const smoothnessScore = Math.max(0, Number((100 - meanDelta * 100).toFixed(2)));
+
+  return {
+    engineName: engineLabel,
+    poolSize: pool.length,
+    acceptedTracks: accepted.length,
+    rejectedTracks: rejectedCount,
+    retentionPct,
+    executionTimeMs,
+    throughputPerSec,
+    meanDelta: Number(meanDelta.toFixed(4)),
+    maxDelta: Number(maxDelta.toFixed(4)),
+    jarringJumps,
+    smoothnessScore
+  };
+}
+
 function runMTGJamendoEvaluation() {
   console.log('\n====================================================================================');
   console.log('       🎼 TUNEIT HIGH-SCALE MTG-JAMENDO DATASET BENCHMARK & PERFORMANCE 🎼        ');
@@ -196,12 +240,36 @@ function runMTGJamendoEvaluation() {
     }))
   );
 
-  // 3. SIDE-BY-SIDE ENGINE COMPARISON AT N=500
-  console.log('\n--- ⚡ 3. SIDE-BY-SIDE ENGINE COMPARISON AT N=500 SCALED PLAYLIST ---');
+  // 3. UNHINGED ENGINE SCALE EVALUATION
+  console.log('\n--- ⚡ 3. TUNEIT UNHINGED ENGINE SCALE EVALUATION (MTG-JAMENDO) ---');
+  const unhingedScaleResults: ScaleResult[] = [];
+  for (const scale of SCALES) {
+    const pool = generateScaledPool(baseTracks, scale);
+    const res = evaluateUnhingedOnPool(pool, `Unhinged Engine (N=${scale})`);
+    unhingedScaleResults.push(res);
+  }
+
+  console.table(
+    unhingedScaleResults.map(r => ({
+      'Track Pool Size (N)': r.poolSize,
+      'Accepted / Total': `${r.acceptedTracks} / ${r.poolSize}`,
+      'Yield Retention': r.retentionPct,
+      'Execution Time': `${r.executionTimeMs} ms`,
+      'Throughput': `${r.throughputPerSec.toLocaleString()} tracks/sec`,
+      'Mean Δ Energy': r.meanDelta,
+      'Max Δ Energy': r.maxDelta,
+      'Jarring Jumps (>0.35)': r.jarringJumps,
+      'Smoothness Score': `${r.smoothnessScore} / 100`
+    }))
+  );
+
+  // 4. SIDE-BY-SIDE ALL THREE ENGINES COMPARISON AT N=500
+  console.log('\n--- 📊 4. SIDE-BY-SIDE ALL 3 ENGINES COMPARISON AT N=500 SCALED PLAYLIST ---');
   const pool500 = generateScaledPool(baseTracks, 500);
 
   const frame500 = evaluateFrameOnPool(pool500, 'TuneIt Frame Engine (Cinematic)');
   const drift500 = evaluateDriftOnPool(pool500, 'TuneIt Mental Drift Engine');
+  const unhinged500 = evaluateUnhingedOnPool(pool500, 'TuneIt Unhinged Engine');
 
   console.table([
     {
@@ -225,12 +293,24 @@ function runMTGJamendoEvaluation() {
       'Max Δ Energy': drift500.maxDelta,
       'Jarring Jumps (>0.35)': drift500.jarringJumps,
       'Smoothness Score': `${drift500.smoothnessScore} / 100`
+    },
+    {
+      Engine: unhinged500.engineName,
+      'Accepted / Total': `${unhinged500.acceptedTracks} / 500`,
+      'Yield Retention': unhinged500.retentionPct,
+      'Execution Time': `${unhinged500.executionTimeMs} ms`,
+      'Throughput': `${unhinged500.throughputPerSec.toLocaleString()} tracks/sec`,
+      'Mean Δ Energy': unhinged500.meanDelta,
+      'Max Δ Energy': unhinged500.maxDelta,
+      'Jarring Jumps (>0.35)': unhinged500.jarringJumps,
+      'Smoothness Score': `${unhinged500.smoothnessScore} / 100`
     }
   ]);
 
   console.log('\n====================================================================================');
   console.log(`🎬 FRAME ENGINE (N=1,000): Processed 1,000 tracks in ${frameScaleResults[3].executionTimeMs} ms (${frameScaleResults[3].throughputPerSec.toLocaleString()} tracks/sec) with ${frameScaleResults[3].retentionPct} retention!`);
   console.log(`🌊 DRIFT ENGINE (N=1,000): Processed 1,000 tracks in ${driftScaleResults[3].executionTimeMs} ms (${driftScaleResults[3].throughputPerSec.toLocaleString()} tracks/sec) with Max ΔE = ${driftScaleResults[3].maxDelta}!`);
+  console.log(`⚡ UNHINGED ENGINE (N=1,000): Processed 1,000 tracks in ${unhingedScaleResults[3].executionTimeMs} ms (${unhingedScaleResults[3].throughputPerSec.toLocaleString()} tracks/sec) with ${unhingedScaleResults[3].retentionPct} retention!`);
   console.log('====================================================================================\n');
 }
 

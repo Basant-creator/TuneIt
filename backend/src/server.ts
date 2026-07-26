@@ -5,7 +5,7 @@ import authRoutes from './routes/auth';
 import playlistRoutes from './routes/playlists';
 
 const app = express();
-const PORT = googleConfig.port;
+const PORT = process.env.PORT || googleConfig.port || 3001;
 
 // Configure CORS allowed origins
 const ALLOWED_ORIGINS = Array.from(

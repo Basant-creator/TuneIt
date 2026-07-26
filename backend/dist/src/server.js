@@ -9,7 +9,7 @@ const ytmusic_1 = require("./config/ytmusic");
 const auth_1 = __importDefault(require("./routes/auth"));
 const playlists_1 = __importDefault(require("./routes/playlists"));
 const app = (0, express_1.default)();
-const PORT = ytmusic_1.googleConfig.port;
+const PORT = process.env.PORT || ytmusic_1.googleConfig.port || 3001;
 // Configure CORS allowed origins
 const ALLOWED_ORIGINS = Array.from(new Set([
     ytmusic_1.googleConfig.frontendUrl,

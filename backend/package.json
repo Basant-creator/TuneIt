@@ -7,9 +7,10 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "evaluate:musav": "ts-node scripts/evaluateSequencing.ts",
+    "evaluate:drift": "ts-node scripts/evaluateSequencing.ts",
     "evaluate:frame": "ts-node scripts/evaluateFrameEngine.ts",
-    "evaluate:jamendo": "ts-node scripts/evaluateMTGJamendo.ts"
+    "evaluate:jamendo": "ts-node scripts/evaluateMTGJamendo.ts",
+    "evaluate:unhinged": "ts-node scripts/evaluateUnhingedEngine.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
