@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "evaluate:musav": "ts-node scripts/evaluateSequencing.ts",
-    "evaluate:frame": "ts-node scripts/evaluateFrameEngine.ts"
+    "evaluate:frame": "ts-node scripts/evaluateFrameEngine.ts",
+    "evaluate:jamendo": "ts-node scripts/evaluateMTGJamendo.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
