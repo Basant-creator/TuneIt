@@ -57,7 +57,7 @@ export function CTASection() {
         <div className="mt-12 flex flex-wrap items-center justify-center gap-4 text-xs font-mono font-black text-black">
           <span className="bg-white px-3 py-1.5 rounded-lg border-2 border-black flex items-center gap-1.5">
             <Music className="w-4 h-4 text-brand-pink" />
-            Spotify Integrated
+            YouTube Music Integrated
           </span>
           <span className="bg-brand-blue text-black px-3 py-1.5 rounded-lg border-2 border-black flex items-center gap-1.5">
             <Star className="w-4 h-4 fill-current text-yellow-300" />

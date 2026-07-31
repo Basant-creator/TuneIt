@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { YtMusicService } from '../services/ytmusicService';
+import { getOrAnalyzeTrack } from '../services/trackCacheService';
+import { checkAndIncrementExportLimit } from '../utils/exportRateLimiter';
 import { googleConfig } from '../config/ytmusic';
 import { handleControllerError } from '../utils/errorHandler';
 
@@ -83,6 +85,18 @@ export const exportPlaylist = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'At least one track (videoId) is required' });
   }
 
+  // Rate limit check: Max 3 exports per day per client IP
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown_client';
+  const limitStatus = checkAndIncrementExportLimit(clientIp, 3);
+
+  if (!limitStatus.allowed) {
+    return res.status(429).json({
+      error: 'Daily YouTube export limit reached (3/3 playlists per day). You can download your playlist sequence as a CSV file instead!',
+      remainingExports: 0,
+      downloadCsvSuggested: true,
+    });
+  }
+
   try {
     const ytmusicService = YtMusicService.getInstance();
     
@@ -95,6 +109,7 @@ export const exportPlaylist = async (req: Request, res: Response) => {
     res.status(201).json({
       message: 'Playlist exported successfully to YouTube Music',
       playlist: newPlaylist,
+      remainingExports: limitStatus.remaining,
     });
   } catch (err: any) {
     handleControllerError(res, err, '[YtMusicController] Error exporting playlist');
@@ -114,7 +129,7 @@ export const getRecommendations = async (req: Request, res: Response) => {
       return res.json({ recommendations: [] });
     }
 
-    const { getRecommendedTracks, analyzeTrackMetadata } = await import('../services/aiService');
+    const { getRecommendedTracks } = await import('../services/aiService');
 
     // Take up to 4 seed tracks
     const seedTracks = tracks.slice(-4);
@@ -125,19 +140,20 @@ export const getRecommendations = async (req: Request, res: Response) => {
       const searchRes = await ytmusicService.searchTrack(`${prop.title} ${prop.artist}`);
       if (!searchRes || !searchRes.videoId) continue;
 
-      const aiMeta = await analyzeTrackMetadata({
+      const cachedTrack = await getOrAnalyzeTrack({
         title: searchRes.title,
         artist: searchRes.artist,
         tags: [],
+        videoId: searchRes.videoId,
       });
 
       recommendations.push({
         videoId: searchRes.videoId,
         title: searchRes.title,
         artist: searchRes.artist,
-        estimatedBpm: aiMeta?.estimated_bpm || 122,
-        intensityScore: aiMeta?.intensity_score || 0.45,
-        vibeReview: aiMeta?.vibe_review || prop.rationale || 'Seamless energy continuation with matching harmonic flow.',
+        estimatedBpm: cachedTrack.estimatedBpm,
+        intensityScore: cachedTrack.intensityScore,
+        vibeReview: prop.rationale || 'Seamless energy continuation with matching harmonic flow.',
       });
     }
 
@@ -146,4 +162,3 @@ export const getRecommendations = async (req: Request, res: Response) => {
     handleControllerError(res, err, `[YtMusicController] Error generating recommendations for playlist ${id}`);
   }
 };
-

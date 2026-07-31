@@ -1,23 +1,13 @@
 import { Request, Response } from 'express';
 import { YtMusicService } from '../services/ytmusicService';
-import { analyzeTrackMetadata } from '../services/aiService';
+import { getOrAnalyzeTrack } from '../services/trackCacheService';
 import { generateDriftPlaylist, DriftTrack } from '../utils/driftAlgorithm';
 import { processFrameAlgorithm, Track as FrameTrack } from '../utils/frameAlgorithm';
 import { processUnhingedAlgorithm, Track as UnhingedTrack } from '../utils/unhingedAlgorithm';
 import { handleControllerError } from '../utils/errorHandler';
-import prisma from '../config/db';
-import Bottleneck from 'bottleneck';
-
-const limiter = new Bottleneck({
-  reservoir: 14,
-  reservoirRefreshAmount: 14,
-  reservoirRefreshInterval: 60000,
-  maxConcurrent: 1,
-  minTime: 1000,
-});
 
 /**
- * Helper to fetch tracks from YouTube API, analyze/enrich via Gemini AI, and cache in Prisma PostgreSQL DB.
+ * Helper to fetch tracks from YouTube API, analyze/enrich via Gemini AI, and cache in DB by Title + Artist.
  */
 async function fetchAndEnrichTracks(playlistId: string) {
   const ytmusicService = YtMusicService.getInstance();
@@ -39,55 +29,19 @@ async function fetchAndEnrichTracks(playlistId: string) {
   for (const track of rawTracks) {
     if (!track.videoId) continue;
 
-    let dbTrack = await prisma.youtubeTrack.findUnique({
-      where: { videoId: track.videoId },
+    const cached = await getOrAnalyzeTrack({
+      title: track.title,
+      artist: track.artist,
+      tags: track.tags,
+      videoId: track.videoId,
     });
-
-    const isDefaultFallback = dbTrack && dbTrack.estimatedBpm === 120 && dbTrack.intensityScore === 0.5;
-
-    if (!dbTrack || isDefaultFallback) {
-      console.log(`[EngineController] Analyzing ${track.title} with Gemini AI...`);
-      
-      const analysis = await limiter.schedule(() =>
-        analyzeTrackMetadata({
-          title: track.title,
-          artist: track.artist,
-          tags: track.tags,
-        })
-      );
-
-      const estimatedBpm = analysis?.estimated_bpm || 120;
-      const intensityScore = analysis?.intensity_score || 0.5;
-
-      if (!dbTrack) {
-        dbTrack = await prisma.youtubeTrack.create({
-          data: {
-            videoId: track.videoId,
-            title: track.title.substring(0, 255),
-            artist: track.artist.substring(0, 255),
-            estimatedBpm,
-            intensityScore,
-          },
-        });
-      } else {
-        dbTrack = await prisma.youtubeTrack.update({
-          where: { videoId: track.videoId },
-          data: {
-            estimatedBpm,
-            intensityScore,
-            title: track.title.substring(0, 255),
-            artist: track.artist.substring(0, 255),
-          },
-        });
-      }
-    }
 
     enrichedTracks.push({
       videoId: track.videoId,
-      title: track.title,
-      artist: track.artist,
-      estimatedBpm: dbTrack.estimatedBpm,
-      intensityScore: dbTrack.intensityScore,
+      title: cached.title,
+      artist: cached.artist,
+      estimatedBpm: cached.estimatedBpm,
+      intensityScore: cached.intensityScore,
       originalIndex: track.originalIndex,
     });
   }

@@ -3,11 +3,7 @@
  * Provides easy autocompletion and enforces checks to avoid silent failures in production.
  */
 
-const requiredEnvVars = [
-  'SPOTIFY_CLIENT_ID',
-  'SPOTIFY_CLIENT_SECRET',
-  'SPOTIFY_REDIRECT_URI',
-] as const;
+const requiredEnvVars = [] as const;
 
 export function validateEnv() {
   if (process.env.NODE_ENV === 'production') {
@@ -23,9 +19,6 @@ export function validateEnv() {
 }
 
 export const env = {
-  spotifyClientId: process.env.SPOTIFY_CLIENT_ID || '',
-  spotifyClientSecret: process.env.SPOTIFY_CLIENT_SECRET || '',
-  spotifyRedirectUri: process.env.SPOTIFY_REDIRECT_URI || '',
   nextAuthSecret: process.env.NEXTAUTH_SECRET || '',
   appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001',

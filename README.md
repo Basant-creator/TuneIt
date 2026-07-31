@@ -92,12 +92,11 @@ Create a file named `.env` inside the `backend` folder and paste the following s
 PORT=3001
 FRONTEND_URL=http://localhost:3000
 GOOGLE_REDIRECT_URI=http://localhost:3001/auth/callback
-SPOTIFY_REDIRECT_URI=http://localhost:3001/auth/spotify/callback
 ```
 
 ---
 
-### Step 5: Start TuneIt!
+## 5. Start TuneIt!
 To start the backend server:
 
 ```bash
@@ -155,7 +154,7 @@ TuneIt/
 
 ## 🛡️ License & Acknowledgments
 
-* Powered by **Spotify Web API** & **MusAV / MTG-Jamendo** open music audio feature datasets.
+* Powered by **YouTube Data API v3** & **MusAV / MTG-Jamendo** open music audio feature datasets.
 * Designed with modern web standards and high-performance TypeScript logic.
 
 **Enjoy seamless, perfectly sequenced music with TuneIt! 🎧✨**

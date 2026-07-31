@@ -505,7 +505,7 @@ export default function Home() {
             <img src="/graphics/computer.svg" alt="Computer" className="absolute top-4 right-4 w-20 h-20 opacity-90 transform rotate-6 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Import Playlist</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
-              Connect your Spotify in one click. We analyze the Camelot harmonic keys, BPM tempos, and energy levels of your existing tracks.
+              Connect your YouTube Music account in one click. We analyze the Camelot harmonic keys, BPM tempos, and energy levels of your existing tracks.
             </p>
           </div>
 
@@ -529,7 +529,7 @@ export default function Home() {
             <img src="/graphics/Paper plane.svg" alt="Paper plane" className="absolute top-4 right-4 w-16 h-16 opacity-90 transform rotate-12 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Export Journey</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
-              Save the newly structured playlist back to your Spotify profile instantly. We never alter your original song files.
+              Save the newly structured playlist back to your YouTube Music profile instantly. We never alter your original song files.
             </p>
           </div>
 

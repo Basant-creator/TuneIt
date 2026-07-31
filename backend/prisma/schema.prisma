@@ -8,7 +8,8 @@ datasource db {
 }
 
 model YoutubeTrack {
-  videoId        String   @id
+  trackKey       String   @id // Normalized key: "slugify(artist):::slugify(title)"
+  videoId        String?  // Associated YouTube video ID (optional/latest)
   title          String
   artist         String
   estimatedBpm   Int

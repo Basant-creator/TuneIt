@@ -1,5 +1,5 @@
-import type { SpotifyTrack } from '@/types/spotify';
 import type {
+  AudioTrack,
   SequencingConfig,
   SequencingResult,
   TransitionMetric,
@@ -53,8 +53,8 @@ export function mapPitchClassToCamelot(key: number, mode: number): string {
  * and BPM drift penalties.
  */
 export function calculateTransition(
-  fromTrack: SpotifyTrack,
-  toTrack: SpotifyTrack
+  fromTrack: AudioTrack,
+  toTrack: AudioTrack
 ): TransitionMetric {
   const defaultFeatures = { tempo: 120, key: 0, mode: 1, energy: 0.5 };
   const featA = fromTrack.audioFeatures || defaultFeatures;
@@ -120,7 +120,7 @@ export function calculateTransition(
  * Takes a list of tracks and mixes them according to the BPM and key config parameters.
  */
 export function sequencePlaylist(
-  tracks: SpotifyTrack[],
+  tracks: AudioTrack[],
   config: SequencingConfig
 ): SequencingResult {
   if (tracks.length <= 1) {
@@ -134,7 +134,7 @@ export function sequencePlaylist(
   }
 
   const unsequenced = [...tracks];
-  const sequenced: SpotifyTrack[] = [];
+  const sequenced: AudioTrack[] = [];
   const transitions: TransitionMetric[] = [];
 
   // Sort original tracks by initial tempo if configuration asks for ascending

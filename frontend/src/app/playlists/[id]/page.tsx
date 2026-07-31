@@ -15,6 +15,7 @@ import {
   Music,
   Plus,
   Volume2,
+  Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeoButton } from '@/components/NeoButton';
@@ -25,6 +26,7 @@ import { cn } from '@/utils/cn';
 import { flowModes } from '@/data/homeData';
 import { env } from '@/lib/env';
 import { decodeHtmlEntities } from '@/utils/decodeHtml';
+import { downloadPlaylistCSV } from '@/utils/csvExporter';
 
 interface Track {
   videoId: string;
@@ -208,6 +210,10 @@ export default function PlaylistModifierPage() {
     setIsPreviewOpen(true);
   };
 
+  const handleDownloadCSV = () => {
+    downloadPlaylistCSV(exportTitle, displayTracks, recommendations);
+  };
+
   const handleExportPlaylist = async () => {
     if (!exportTitle.trim()) {
       setExportError('Playlist title cannot be empty');
@@ -352,7 +358,7 @@ export default function PlaylistModifierPage() {
                     </NeoButton>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="bg-brand-blue/20 border-2 border-brand-blue p-4 rounded-xl text-center">
                       <h4 className="font-black uppercase text-brand-blue flex items-center justify-center gap-2">
                         <Sparkles className="w-4 h-4" />
@@ -362,7 +368,7 @@ export default function PlaylistModifierPage() {
 
                     <NeoButton
                       color="yellow"
-                      className="w-full justify-center h-14 font-black"
+                      className="w-full justify-center h-12 font-black"
                       onClick={() => {
                         setExportTitle(`TuneIt Flow - ${flowModes.find((m) => m.id === selectedMode)?.title || 'Optimized'}`);
                         setExportError(null);
@@ -373,6 +379,14 @@ export default function PlaylistModifierPage() {
                       <Share2 className="w-5 h-5 mr-2 inline" />
                       EXPORT TO YOUTUBE MUSIC
                     </NeoButton>
+
+                    <button
+                      onClick={handleDownloadCSV}
+                      className="w-full bg-white neo-border border-black py-3 px-4 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors shadow-sm text-black"
+                    >
+                      <Download className="w-4 h-4 text-brand-pink" />
+                      DOWNLOAD CSV FILE
+                    </button>
 
                     <NeoButton
                       color="white"
@@ -399,9 +413,21 @@ export default function PlaylistModifierPage() {
                   <h2 className="text-xl font-black uppercase">
                     {isComplete ? 'Optimized Sequence' : 'Current Sequence'}
                   </h2>
-                  <span className="font-mono text-xs font-black bg-black text-white px-2 py-1 rounded-md">
-                    {displayTracks.length} Tracks
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-black bg-black text-white px-2 py-1 rounded-md">
+                      {displayTracks.length} Tracks
+                    </span>
+                    {isComplete && (
+                      <button
+                        onClick={handleDownloadCSV}
+                        title="Download sequence & recommendations as CSV"
+                        className="bg-brand-yellow neo-border-xs px-2.5 py-1 rounded-md text-xs font-black uppercase font-mono hover:scale-105 transition-transform flex items-center gap-1.5 text-black"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        CSV
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="relative">
@@ -488,9 +514,18 @@ export default function PlaylistModifierPage() {
                         Recommended Next Up (Vibe Extensions)
                       </h3>
                       <p className="font-mono text-xs font-bold text-slate-600 mt-0.5">
-                        Hand-picked songs related to your playlist vibe. Click &quot;Add to Flow&quot; to append.
+                        Hand-picked songs related to your playlist vibe. Click &quot;Add to Flow&quot; to append or download CSV.
                       </p>
                     </div>
+
+                    <button
+                      onClick={handleDownloadCSV}
+                      title="Download full sequence + recommendations as CSV"
+                      className="bg-white neo-border-xs px-2.5 py-1.5 rounded-lg text-xs font-black uppercase font-mono hover:bg-slate-100 transition-colors flex items-center gap-1.5 shrink-0 text-black"
+                    >
+                      <Download className="w-3.5 h-3.5 text-brand-pink" />
+                      Download CSV
+                    </button>
                   </div>
 
                   {isLoadingRecommendations ? (
@@ -620,7 +655,7 @@ export default function PlaylistModifierPage() {
                     </div>
                     <div>
                       <h2 className="text-xl font-black uppercase">Export Playlist</h2>
-                      <p className="font-mono text-xs font-bold text-slate-500">Save your optimized sequence to YouTube Music</p>
+                      <p className="font-mono text-xs font-bold text-slate-500">Save to YouTube Music or download as CSV</p>
                     </div>
                   </div>
 
@@ -645,26 +680,39 @@ export default function PlaylistModifierPage() {
                     </div>
 
                     {exportError && (
-                      <div className="bg-red-50 border border-red-300 text-red-600 p-3 rounded-xl font-mono text-xs font-bold flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{exportError}</span>
+                      <div className="bg-red-50 border-2 border-red-500 text-red-700 p-4 rounded-2xl font-mono text-xs font-bold space-y-3">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                          <span className="font-black">{exportError}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600">
+                          Export limit reached (3 playlists/day). You can download your playlist sequence directly as a CSV file to import into any music platform!
+                        </p>
+                        <button
+                          onClick={handleDownloadCSV}
+                          className="w-full bg-brand-yellow neo-border border-black text-black font-black uppercase py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+                        >
+                          <Download className="w-4 h-4" />
+                          DOWNLOAD CSV NOW
+                        </button>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
                     <NeoButton
                       color="white"
-                      className="flex-1 justify-center"
-                      onClick={() => setIsExportModalOpen(false)}
+                      className="w-full sm:flex-1 justify-center"
+                      onClick={handleDownloadCSV}
                       disabled={isExporting}
                     >
-                      Cancel
+                      <Download className="w-4 h-4 mr-1 text-brand-pink" />
+                      Download CSV
                     </NeoButton>
 
                     <NeoButton
                       color="yellow"
-                      className="flex-1 justify-center"
+                      className="w-full sm:flex-1 justify-center"
                       onClick={handleExportPlaylist}
                       disabled={isExporting || !exportTitle.trim()}
                     >
@@ -704,6 +752,14 @@ export default function PlaylistModifierPage() {
                       <ExternalLink className="w-5 h-5" />
                       Open in YouTube Music
                     </a>
+
+                    <button
+                      onClick={handleDownloadCSV}
+                      className="w-full bg-white neo-border border-black font-black uppercase py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors text-black"
+                    >
+                      <Download className="w-4 h-4 text-brand-pink" />
+                      Download Backup CSV
+                    </button>
 
                     <NeoButton
                       color="white"
