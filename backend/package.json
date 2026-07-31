@@ -10,7 +10,10 @@
     "evaluate:drift": "ts-node scripts/evaluateSequencing.ts",
     "evaluate:frame": "ts-node scripts/evaluateFrameEngine.ts",
     "evaluate:jamendo": "ts-node scripts/evaluateMTGJamendo.ts",
-    "evaluate:unhinged": "ts-node scripts/evaluateUnhingedEngine.ts"
+    "evaluate:unhinged": "ts-node scripts/evaluateUnhingedEngine.ts",
+    "evaluate:rise": "ts-node scripts/evaluateRiseEngine.ts",
+    "evaluate:all": "ts-node scripts/evaluateCombinedEngines.ts",
+    "test:rise": "ts-node tests/riseEngine.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
