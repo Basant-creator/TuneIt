@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import { YtMusicService } from '../services/ytmusicService';
-import { getOrAnalyzeTrack } from '../services/trackCacheService';
+import { getOrAnalyzeTracksBatch } from '../services/trackCacheService';
+import { isDeletedOrUnavailableTrack } from '../utils/trackUtils';
 import { generateDriftPlaylist, DriftTrack } from '../utils/driftAlgorithm';
 import { processFrameAlgorithm, Track as FrameTrack } from '../utils/frameAlgorithm';
 import { processUnhingedAlgorithm, Track as UnhingedTrack } from '../utils/unhingedAlgorithm';
 import { handleControllerError } from '../utils/errorHandler';
 
 /**
- * Helper to fetch tracks from YouTube API, analyze/enrich via Gemini AI, and cache in DB by Title + Artist.
+ * Helper to fetch tracks from YouTube API, analyze/enrich via Gemini AI in batch, and cache in DB by Title + Artist.
  */
 async function fetchAndEnrichTracks(playlistId: string) {
   const ytmusicService = YtMusicService.getInstance();
@@ -17,36 +18,38 @@ async function fetchAndEnrichTracks(playlistId: string) {
     return { rawTracks: [], enrichedTracks: [] };
   }
 
-  const enrichedTracks: Array<{
-    videoId: string;
-    title: string;
-    artist: string;
-    estimatedBpm: number;
-    intensityScore: number;
-    originalIndex: number;
-  }> = [];
+  // Filter valid, non-deleted tracks
+  const validTracks = rawTracks.filter(
+    (t) => t.videoId && !isDeletedOrUnavailableTrack(t.title, t.artist, t.videoId)
+  );
 
-  for (const track of rawTracks) {
-    if (!track.videoId) continue;
-
-    const cached = await getOrAnalyzeTrack({
-      title: track.title,
-      artist: track.artist,
-      tags: track.tags,
-      videoId: track.videoId,
-    });
-
-    enrichedTracks.push({
-      videoId: track.videoId,
-      title: cached.title,
-      artist: cached.artist,
-      estimatedBpm: cached.estimatedBpm,
-      intensityScore: cached.intensityScore,
-      originalIndex: track.originalIndex,
-    });
+  if (validTracks.length === 0) {
+    return { rawTracks: [], enrichedTracks: [] };
   }
 
-  return { rawTracks, enrichedTracks };
+  // Batch analyze / fetch from cache
+  const cachedResults = await getOrAnalyzeTracksBatch(
+    validTracks.map((t) => ({
+      title: t.title,
+      artist: t.artist,
+      tags: t.tags,
+      videoId: t.videoId,
+    }))
+  );
+
+  const enrichedTracks = validTracks.map((track, idx) => {
+    const cached = cachedResults[idx];
+    return {
+      videoId: track.videoId,
+      title: cached?.title || track.title,
+      artist: cached?.artist || track.artist,
+      estimatedBpm: cached?.estimatedBpm || 120,
+      intensityScore: cached?.intensityScore ?? 0.5,
+      originalIndex: track.originalIndex,
+    };
+  });
+
+  return { rawTracks: validTracks, enrichedTracks };
 }
 
 /**

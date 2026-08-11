@@ -42,7 +42,7 @@ export function runRiseEngineEvaluation() {
 
   const argPath = process.argv[2];
   const defaultPath = path.join(__dirname, 'customUserPlaylist.json');
-  const jamendoPath = path.join(__dirname, '..', 'tests', 'fixtures', 'mtg_jamendo_dataset.json');
+  const jamendoPath = path.join(__dirname, 'fixtures', 'mtg_jamendo_dataset.json');
 
   let dataPath = defaultPath;
   if (argPath && fs.existsSync(argPath)) {

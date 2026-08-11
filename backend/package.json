@@ -12,8 +12,7 @@
     "evaluate:jamendo": "ts-node scripts/evaluateMTGJamendo.ts",
     "evaluate:unhinged": "ts-node scripts/evaluateUnhingedEngine.ts",
     "evaluate:rise": "ts-node scripts/evaluateRiseEngine.ts",
-    "evaluate:all": "ts-node scripts/evaluateCombinedEngines.ts",
-    "test:rise": "ts-node tests/riseEngine.test.ts"
+    "evaluate:all": "ts-node scripts/evaluateCombinedEngines.ts"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",

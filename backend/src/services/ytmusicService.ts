@@ -1,5 +1,6 @@
 import { google, youtube_v3 } from 'googleapis';
 import { googleConfig } from '../config/ytmusic';
+import { isDeletedOrUnavailableTrack } from '../utils/trackUtils';
 
 export interface YouTubeUserProfile {
   id: string;
@@ -213,18 +214,34 @@ export class YtMusicService {
         }
       }
 
-      return allItems.map((item, index) => {
+      const validTracks: YouTubeTrack[] = [];
+      let skippedCount = 0;
+
+      allItems.forEach((item, index) => {
         const videoId = item.snippet?.resourceId?.videoId;
+        const title = item.snippet?.title || 'Unknown Title';
+        const artist = item.snippet?.videoOwnerChannelTitle || 'Unknown Artist';
         const video = allVideos.find((v) => v.id === videoId);
 
-        return {
+        if (!videoId || isDeletedOrUnavailableTrack(title, artist, videoId)) {
+          skippedCount++;
+          return;
+        }
+
+        validTracks.push({
           videoId,
-          title: item.snippet?.title || 'Unknown Title',
-          artist: item.snippet?.videoOwnerChannelTitle || 'Unknown Artist',
+          title,
+          artist,
           tags: video?.snippet?.tags || [],
           originalIndex: index,
-        };
+        });
       });
+
+      if (skippedCount > 0) {
+        console.log(`[YtMusicService] Filtered out ${skippedCount} deleted/unavailable track(s) from playlist: ${playlistId}`);
+      }
+
+      return validTracks;
     } catch (err: any) {
       console.error('[YtMusicService] Error fetching playlist tracks:', err?.message || err);
       throw err;

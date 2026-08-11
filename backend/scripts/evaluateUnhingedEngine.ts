@@ -32,11 +32,11 @@ function runUnhingedEvaluation() {
   console.log('       ⚡ TUNEIT UNHINGED ENGINE (REBALANCED ANCHOR MECHANICS BENCHMARK) ⚡        ');
   console.log('========================================================================================\n');
 
-  const mtgPath = path.join(__dirname, '..', 'tests', 'fixtures', 'mtg_jamendo_dataset.json');
-  const musavPath = path.join(__dirname, '..', 'tests', 'fixtures', 'musav_30.json');
+  const mtgPath = path.join(__dirname, 'fixtures', 'mtg_jamendo_dataset.json');
+  const musavPath = path.join(__dirname, 'fixtures', 'musav_30.json');
 
   if (!fs.existsSync(mtgPath) || !fs.existsSync(musavPath)) {
-    console.error('❌ Benchmark dataset fixtures not found in /tests/fixtures/');
+    console.error('❌ Benchmark dataset fixtures not found in /scripts/fixtures/');
     process.exit(1);
   }
 

@@ -233,7 +233,7 @@ function runMTGJamendoEvaluation() {
   console.log('       🎼 TUNEIT HIGH-SCALE MTG-JAMENDO DATASET BENCHMARK & PERFORMANCE 🎼        ');
   console.log('====================================================================================\n');
 
-  const fixturePath = path.join(__dirname, '..', 'tests', 'fixtures', 'mtg_jamendo_dataset.json');
+  const fixturePath = path.join(__dirname, 'fixtures', 'mtg_jamendo_dataset.json');
   if (!fs.existsSync(fixturePath)) {
     console.error(`❌ Error: MTG-Jamendo dataset fixture not found at ${fixturePath}`);
     process.exit(1);

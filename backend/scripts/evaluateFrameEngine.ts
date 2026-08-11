@@ -94,7 +94,7 @@ function runFrameEngineEvaluation() {
   console.log('       🎬 TUNEIT FRAME ENGINE (SYSTEM SPECIFICATION BENCHMARK) 🎬        ');
   console.log('========================================================================\n');
 
-  const fixturePath = path.join(__dirname, '..', 'tests', 'fixtures', 'musav_30.json');
+  const fixturePath = path.join(__dirname, 'fixtures', 'musav_30.json');
   if (!fs.existsSync(fixturePath)) {
     console.error(`❌ Error: Benchmark dataset fixture not found at ${fixturePath}`);
     process.exit(1);
