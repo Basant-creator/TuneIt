@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Music2 } from 'lucide-react';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { TextLogo } from '@/components/TextLogo';
+import { Header } from '@/components/Header';
 import { env } from '@/lib/env';
 
 interface UserProfile {
@@ -62,28 +63,7 @@ export default function PlaylistsPage() {
   return (
     <div className="min-h-screen bg-[#F8FFE5] text-black">
       {/* HEADER */}
-      <header className="w-full py-5 px-6 md:px-12 border-b-3 border-black bg-white flex items-center justify-between sticky top-0 z-50 select-none">
-        <div className="flex items-center cursor-pointer" onClick={() => router.push('/')}>
-          <TextLogo />
-        </div>
-
-        <div className="flex items-center gap-3">
-          {userProfile && (
-            <div className="flex items-center gap-2 bg-[#F8FFE5] neo-border px-3.5 py-1.5 rounded-xl border-black select-none">
-              {userProfile.images?.[0]?.url && (
-                <img
-                  src={userProfile.images[0].url}
-                  alt={userProfile.display_name || 'User'}
-                  className="w-6 h-6 rounded-full border-2 border-black"
-                />
-              )}
-              <span className="font-mono text-xs font-black text-black hidden sm:inline">
-                {userProfile.display_name}
-              </span>
-            </div>
-          )}
-        </div>
-      </header>
+      <Header userProfile={userProfile} showNavLinks={false} />
 
       {/* MAIN CONTENT */}
       <main className="max-w-7xl mx-auto py-12 px-6">

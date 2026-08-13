@@ -2,6 +2,21 @@ import { google, youtube_v3 } from 'googleapis';
 import { googleConfig } from '../config/ytmusic';
 import { isDeletedOrUnavailableTrack } from '../utils/trackUtils';
 
+/**
+ * Cleans YouTube artist strings by removing common YouTube channel suffixes
+ * such as "- Topic", "Release - Topic", "- VEVO", etc.
+ */
+export function cleanArtistName(artist: string): string {
+  if (!artist) return '';
+  const cleaned = artist
+    .replace(/\s*-\s*topic$/i, '')
+    .replace(/\s*topic$/i, '')
+    .replace(/\s*-\s*vevo$/i, '')
+    .replace(/\s*vevo$/i, '')
+    .trim();
+  return cleaned || artist;
+}
+
 export interface YouTubeUserProfile {
   id: string;
   display_name: string;
@@ -220,7 +235,8 @@ export class YtMusicService {
       allItems.forEach((item, index) => {
         const videoId = item.snippet?.resourceId?.videoId;
         const title = item.snippet?.title || 'Unknown Title';
-        const artist = item.snippet?.videoOwnerChannelTitle || 'Unknown Artist';
+        const rawArtist = item.snippet?.videoOwnerChannelTitle || 'Unknown Artist';
+        const artist = cleanArtistName(rawArtist);
         const video = allVideos.find((v) => v.id === videoId);
 
         if (!videoId || isDeletedOrUnavailableTrack(title, artist, videoId)) {
@@ -351,7 +367,7 @@ export class YtMusicService {
       return {
         videoId: item.id.videoId,
         title: item.snippet?.title || query,
-        artist: item.snippet?.channelTitle || 'Unknown Artist',
+        artist: cleanArtistName(item.snippet?.channelTitle || 'Unknown Artist'),
         tags: [],
         originalIndex: 0,
       };

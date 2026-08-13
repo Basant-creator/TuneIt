@@ -1,6 +1,7 @@
 import prisma from '../config/db';
 import { analyzeTrackMetadata, analyzeBatchTrackMetadata, BatchTrackItem, AIAnalysisResult } from './aiService';
 import { isDeletedOrUnavailableTrack, estimateTrackHeuristics } from '../utils/trackUtils';
+import { cleanArtistName } from './ytmusicService';
 import Bottleneck from 'bottleneck';
 
 const limiter = new Bottleneck({
@@ -139,13 +140,14 @@ export async function getOrAnalyzeTracksBatch(
         }
 
         try {
+          const cleanArtist = cleanArtistName(p.artist);
           const savedTrack = await prisma.youtubeTrack.upsert({
             where: { trackKey: key },
             create: {
               trackKey: key,
               videoId: p.videoId || null,
               title: p.title.substring(0, 255),
-              artist: p.artist.substring(0, 255),
+              artist: cleanArtist.substring(0, 255),
               estimatedBpm: bpm,
               intensityScore: intensity,
             },
@@ -154,7 +156,7 @@ export async function getOrAnalyzeTracksBatch(
               estimatedBpm: bpm,
               intensityScore: intensity,
               title: p.title.substring(0, 255),
-              artist: p.artist.substring(0, 255),
+              artist: cleanArtist.substring(0, 255),
               lastUpdated: new Date(),
             },
           });

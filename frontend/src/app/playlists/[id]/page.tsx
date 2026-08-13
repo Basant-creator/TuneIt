@@ -63,6 +63,9 @@ export default function PlaylistModifierPage() {
   const [isComplete, setIsComplete] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Active pill sequence tab ('chaotic' | 'optimized' | 'recommendations' | 'harsh')
+  const [activeSequenceTab, setActiveSequenceTab] = React.useState<'chaotic' | 'optimized' | 'recommendations' | 'harsh'>('optimized');
+
   // Recommendations state
   const [recommendations, setRecommendations] = React.useState<RecommendedTrack[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = React.useState(false);
@@ -274,349 +277,490 @@ export default function PlaylistModifierPage() {
             <NeoButton color="white" className="mt-6" onClick={() => window.location.reload()}>Retry</NeoButton>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* LEFT COLUMN: Controls & Modes */}
-            <div className="lg:col-span-5 sticky top-[100px]">
-              <div className="bg-white neo-border border-black rounded-3xl p-6 relative">
-                {isComplete && (
-                  <div className="absolute -top-6 -right-6 z-10">
-                    <Sticker color="pink" rotation={10} size="sm">
-                      PERFECTED!
-                    </Sticker>
-                  </div>
-                )}
-
-                <h1 className="text-3xl font-black uppercase tracking-tight mb-2">
-                  Shape Your Flow
-                </h1>
-                <p className="font-mono text-xs font-bold text-slate-500 mb-6">
-                  {originalTracks.length} tracks in this playlist
-                </p>
-
-                {/* Modes Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  {flowModes.map((mode) => {
-                    const isSelected = selectedMode === mode.id;
-                    const isDisabled = isGenerating || isComplete;
-
-                    return (
-                      <button
-                        key={mode.id}
-                        disabled={isDisabled}
-                        onClick={() => setSelectedMode(mode.id)}
-                        className={cn(
-                          'text-left p-3 rounded-2xl border-2 border-black transition-all relative overflow-hidden flex flex-col',
-                          isSelected
-                            ? 'bg-black text-white shadow-none translate-y-1'
-                            : 'bg-white hover:-translate-y-1 hover:neo-shadow active:translate-y-0 text-black',
-                          isDisabled && !isSelected && 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none'
-                        )}
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          {mode.emoji && <span className="text-2xl">{mode.emoji}</span>}
-                          <h3 className="font-black uppercase text-sm">{mode.title}</h3>
-                        </div>
-                        <p
-                          className={cn(
-                            'font-mono text-[10px] leading-tight font-medium flex-1',
-                            isSelected ? 'text-slate-300' : 'text-slate-500'
-                          )}
-                        >
-                          {mode.desc}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Action Area */}
-                {!isComplete ? (
-                  <div className="space-y-4">
-                    {selectedMode !== 'df' && (
-                      <p className="font-mono text-[10px] font-black text-brand-orange bg-orange-50 border border-brand-orange p-2 rounded-lg text-center uppercase">
-                        This mode engine is currently offline. Select Drift to continue.
-                      </p>
-                    )}
-
-                    <NeoButton
-                      color="yellow"
-                      className="w-full justify-center h-14"
-                      disabled={selectedMode !== 'df' || isGenerating}
-                      onClick={handleApplyFlow}
-                    >
-                      {isGenerating ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          ANALYZING & SORTING...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Play className="w-5 h-5 fill-current" />
-                          APPLY {flowModes.find((m) => m.id === selectedMode)?.title.toUpperCase()} FLOW
-                        </span>
-                      )}
-                    </NeoButton>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="bg-brand-blue/20 border-2 border-brand-blue p-4 rounded-xl text-center">
-                      <h4 className="font-black uppercase text-brand-blue flex items-center justify-center gap-2">
-                        <Sparkles className="w-4 h-4" />
-                        Flow Applied Successfully
-                      </h4>
-                    </div>
-
-                    <NeoButton
-                      color="yellow"
-                      className="w-full justify-center h-12 font-black"
-                      onClick={() => {
-                        setExportTitle(`TuneIt Flow - ${flowModes.find((m) => m.id === selectedMode)?.title || 'Optimized'}`);
-                        setExportError(null);
-                        setExportedPlaylistUrl(null);
-                        setIsExportModalOpen(true);
-                      }}
-                    >
-                      <Share2 className="w-5 h-5 mr-2 inline" />
-                      EXPORT TO YOUTUBE MUSIC
-                    </NeoButton>
-
-                    <button
-                      onClick={handleDownloadCSV}
-                      className="w-full bg-white neo-border border-black py-3 px-4 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors shadow-sm text-black"
-                    >
-                      <Download className="w-4 h-4 text-brand-pink" />
-                      DOWNLOAD CSV FILE
-                    </button>
-
-                    <NeoButton
-                      color="white"
-                      className="w-full justify-center"
-                      onClick={() => {
-                        setIsComplete(false);
-                        setDisplayTracks(originalTracks);
-                        setHarshTracks([]);
-                        setRecommendations([]);
-                      }}
-                    >
-                      Reset and Try Again
-                    </NeoButton>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* RIGHT COLUMN: Tracks Visualizer & Related Song Recommendations */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Main Sequence */}
-              <div className="bg-white neo-border border-black rounded-3xl p-6 overflow-hidden">
-                <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-4">
-                  <h2 className="text-xl font-black uppercase">
-                    {isComplete ? 'Optimized Sequence' : 'Current Sequence'}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-black bg-black text-white px-2 py-1 rounded-md">
-                      {displayTracks.length} Tracks
-                    </span>
-                    {isComplete && (
-                      <button
-                        onClick={handleDownloadCSV}
-                        title="Download sequence & recommendations as CSV"
-                        className="bg-brand-yellow neo-border-xs px-2.5 py-1 rounded-md text-xs font-black uppercase font-mono hover:scale-105 transition-transform flex items-center gap-1.5 text-black"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        CSV
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="relative">
-                  {isGenerating && (
-                    <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-                      <div className="bg-white/80 neo-border border-black p-6 rounded-3xl flex flex-col items-center shadow-lg backdrop-blur-sm pointer-events-auto">
-                        <SpinningBlocks />
-                        <p className="mt-4 font-black uppercase text-brand-pink tracking-widest text-sm animate-pulse">Syncing Vibes...</p>
-                      </div>
-                    </div>
+          <div className="flex flex-col w-full">
+            {/* Top Level Pill Navigation Bar (Single Straight Line) when Completed */}
+            {isComplete && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="w-full bg-white neo-border border-2 border-black p-2 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-row flex-nowrap items-center justify-between overflow-x-auto whitespace-nowrap gap-2 mb-8 select-none"
+              >
+                <button
+                  type="button"
+                  onClick={() => setActiveSequenceTab('chaotic')}
+                  className={cn(
+                    'flex-1 min-w-[160px] px-4 py-2.5 rounded-full font-black uppercase text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                    activeSequenceTab === 'chaotic'
+                      ? 'bg-brand-orange text-white neo-border-xs border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                      : 'bg-transparent text-black hover:bg-slate-100'
                   )}
-
-                  <div
+                >
+                  <span>1. Chaotic Sequence</span>
+                  <span
                     className={cn(
-                      'transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2',
-                      isGenerating && 'blur-[6px] opacity-40 grayscale-[30%] pointer-events-none overflow-hidden'
+                      'font-mono text-[10px] px-2 py-0.5 rounded-full border border-black font-black shrink-0',
+                      activeSequenceTab === 'chaotic' ? 'bg-white text-black' : 'bg-slate-200 text-slate-700'
                     )}
                   >
-                    <ul className="space-y-2 flex flex-col relative">
-                      <AnimatePresence>
-                        {displayTracks.map((track, idx) => (
-                          <motion.li
-                            layout
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{
-                              type: 'spring',
-                              stiffness: 80,
-                              damping: 20,
-                              duration: 1.2,
-                            }}
-                            key={track.videoId}
-                            className="flex items-center gap-3 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white"
+                    {originalTracks.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSequenceTab('optimized')}
+                  className={cn(
+                    'flex-1 min-w-[150px] px-4 py-2.5 rounded-full font-black uppercase text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                    activeSequenceTab === 'optimized'
+                      ? 'bg-brand-orange text-white neo-border-xs border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                      : 'bg-transparent text-black hover:bg-slate-100'
+                  )}
+                >
+                  <span>2. Optimized</span>
+                  <span
+                    className={cn(
+                      'font-mono text-[10px] px-2 py-0.5 rounded-full border border-black font-black shrink-0',
+                      activeSequenceTab === 'optimized' ? 'bg-white text-black' : 'bg-slate-200 text-slate-700'
+                    )}
+                  >
+                    {displayTracks.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSequenceTab('recommendations')}
+                  className={cn(
+                    'flex-1 min-w-[170px] px-4 py-2.5 rounded-full font-black uppercase text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                    activeSequenceTab === 'recommendations'
+                      ? 'bg-brand-orange text-white neo-border-xs border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                      : 'bg-transparent text-black hover:bg-slate-100'
+                  )}
+                >
+                  <span>3. Recommendation</span>
+                  <span
+                    className={cn(
+                      'font-mono text-[10px] px-2 py-0.5 rounded-full border border-black font-black shrink-0',
+                      activeSequenceTab === 'recommendations' ? 'bg-white text-black' : 'bg-slate-200 text-slate-700'
+                    )}
+                  >
+                    {recommendations.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSequenceTab('harsh')}
+                  className={cn(
+                    'flex-1 min-w-[160px] px-4 py-2.5 rounded-full font-black uppercase text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                    activeSequenceTab === 'harsh'
+                      ? 'bg-brand-orange text-white neo-border-xs border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                      : 'bg-transparent text-black hover:bg-slate-100'
+                  )}
+                >
+                  <span>4. Harsh Songs</span>
+                  <span
+                    className={cn(
+                      'font-mono text-[10px] px-2 py-0.5 rounded-full border border-black font-black shrink-0',
+                      activeSequenceTab === 'harsh' ? 'bg-white text-black' : 'bg-slate-200 text-slate-700'
+                    )}
+                  >
+                    {harshTracks.length}
+                  </span>
+                </button>
+              </motion.div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
+              {/* LEFT COLUMN: Shape Your Flow Controls */}
+              <div className="lg:col-span-5 sticky top-[100px]">
+                <div className="bg-white neo-border border-black rounded-3xl p-6 relative">
+                  {isComplete && (
+                    <div className="absolute -top-6 -right-6 z-10">
+                      <Sticker color="pink" rotation={10} size="sm">
+                        PERFECTED!
+                      </Sticker>
+                    </div>
+                  )}
+
+                  <h1 className="text-3xl font-black uppercase tracking-tight mb-2">
+                    Shape Your Flow
+                  </h1>
+                  <p className="font-mono text-xs font-bold text-slate-500 mb-6">
+                    {originalTracks.length} tracks in this playlist
+                  </p>
+
+                  {/* Modes Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    {flowModes.map((mode) => {
+                      const isSelected = selectedMode === mode.id;
+                      const isDisabled = isGenerating || isComplete;
+
+                      return (
+                        <button
+                          key={mode.id}
+                          disabled={isDisabled}
+                          onClick={() => setSelectedMode(mode.id)}
+                          className={cn(
+                            'text-left p-3 rounded-2xl border-2 border-black transition-all relative overflow-hidden flex flex-col',
+                            isSelected
+                              ? 'bg-black text-white shadow-none translate-y-1'
+                              : 'bg-white hover:-translate-y-1 hover:neo-shadow active:translate-y-0 text-black',
+                            isDisabled && !isSelected && 'opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none'
+                          )}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            {mode.emoji && <span className="text-2xl">{mode.emoji}</span>}
+                            <h3 className="font-black uppercase text-sm">{mode.title}</h3>
+                          </div>
+                          <p
+                            className={cn(
+                              'font-mono text-[10px] leading-tight font-medium flex-1',
+                              isSelected ? 'text-slate-300' : 'text-slate-500'
+                            )}
                           >
-                            <div className="w-8 h-8 rounded-full bg-brand-yellow neo-border border-black flex items-center justify-center font-black shrink-0 text-sm">
-                              {track.displayIndex || idx + 1}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-black text-sm truncate" title={decodeHtmlEntities(track.title)}>{decodeHtmlEntities(track.title)}</h4>
-                              <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{decodeHtmlEntities(track.artist)}</p>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              {track.estimatedBpm && (
-                                <div className="flex gap-2 text-right hidden sm:flex">
-                                  <div className="flex flex-col">
-                                    <span className="font-mono text-[9px] uppercase font-black text-slate-400">BPM</span>
-                                    <span className="font-black text-xs">{Math.round(track.estimatedBpm)}</span>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <span className="font-mono text-[9px] uppercase font-black text-slate-400">NRG</span>
-                                    <span className="font-black text-xs text-brand-pink">{track.intensityScore?.toFixed(2)}</span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* 15s Snippet Preview Trigger Button */}
-                              <button
-                                onClick={() => handleOpenPreview(track)}
-                                title="Listen to 15s Snippet & AI Review"
-                                className="bg-brand-pink text-white neo-border-xs px-2 py-1 rounded-lg text-[10px] font-black uppercase font-mono hover:scale-105 transition-transform flex items-center gap-1"
-                              >
-                                <Volume2 className="w-3.5 h-3.5" />
-                                <span className="hidden md:inline">15s Snippet</span>
-                              </button>
-                            </div>
-                          </motion.li>
-                        ))}
-                      </AnimatePresence>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Related Song Recommendations ("Next Up / Vibe Extensions") */}
-              {isComplete && (
-                <div className="bg-[#FFFDE8] neo-border border-black rounded-3xl p-6 relative">
-                  <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-3">
-                    <div>
-                      <h3 className="text-lg font-black uppercase text-black flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-brand-orange fill-current" />
-                        Recommended Next Up (Vibe Extensions)
-                      </h3>
-                      <p className="font-mono text-xs font-bold text-slate-600 mt-0.5">
-                        Hand-picked songs related to your playlist vibe. Click &quot;Add to Flow&quot; to append or download CSV.
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={handleDownloadCSV}
-                      title="Download full sequence + recommendations as CSV"
-                      className="bg-white neo-border-xs px-2.5 py-1.5 rounded-lg text-xs font-black uppercase font-mono hover:bg-slate-100 transition-colors flex items-center gap-1.5 shrink-0 text-black"
-                    >
-                      <Download className="w-3.5 h-3.5 text-brand-pink" />
-                      Download CSV
-                    </button>
+                            {mode.desc}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {isLoadingRecommendations ? (
-                    <div className="flex items-center justify-center py-8 gap-3 font-mono text-xs font-black">
-                      <Loader2 className="w-6 h-6 animate-spin text-brand-pink" />
-                      Analyzing vibe continuation...
-                    </div>
-                  ) : recommendations.length === 0 ? (
-                    <div className="text-center py-6 font-mono text-xs text-slate-500 font-bold">
-                      No additional recommendations found.
+                  {/* Action Area */}
+                  {!isComplete ? (
+                    <div className="space-y-4">
+                      {selectedMode !== 'df' && (
+                        <p className="font-mono text-[10px] font-black text-brand-orange bg-orange-50 border border-brand-orange p-2 rounded-lg text-center uppercase">
+                          This mode engine is currently offline. Select Drift to continue.
+                        </p>
+                      )}
+
+                      <NeoButton
+                        color="yellow"
+                        className="w-full justify-center h-14"
+                        disabled={selectedMode !== 'df' || isGenerating}
+                        onClick={handleApplyFlow}
+                      >
+                        {isGenerating ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            ANALYZING & SORTING...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <Play className="w-5 h-5 fill-current" />
+                            APPLY {flowModes.find((m) => m.id === selectedMode)?.title.toUpperCase()} FLOW
+                          </span>
+                        )}
+                      </NeoButton>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {recommendations.map((rec) => (
-                        <div
-                          key={rec.videoId}
-                          className="bg-white neo-border-sm p-3 rounded-2xl flex flex-col justify-between gap-3 text-xs shadow-sm hover:shadow-md transition-shadow"
+                    <div className="space-y-3">
+                      <div className="bg-brand-blue/20 border-2 border-brand-blue p-4 rounded-xl text-center">
+                        <h4 className="font-black uppercase text-brand-blue flex items-center justify-center gap-2">
+                          <Sparkles className="w-4 h-4" />
+                          Flow Applied Successfully
+                        </h4>
+                      </div>
+
+                      <NeoButton
+                        color="yellow"
+                        className="w-full justify-center h-12 font-black"
+                        onClick={() => {
+                          setExportTitle(`TuneIt Flow - ${flowModes.find((m) => m.id === selectedMode)?.title || 'Optimized'}`);
+                          setExportError(null);
+                          setExportedPlaylistUrl(null);
+                          setIsExportModalOpen(true);
+                        }}
+                      >
+                        <Share2 className="w-5 h-5 mr-2 inline" />
+                        EXPORT TO YOUTUBE MUSIC
+                      </NeoButton>
+
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -1.5 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                        onClick={handleDownloadCSV}
+                        className="w-full bg-brand-yellow neo-border border-2 border-black py-3.5 px-4 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2.5 shadow-[2.5px_2.5px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all text-black cursor-pointer group"
+                      >
+                        <motion.div
+                          animate={{ y: [0, -2, 0] }}
+                          transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
                         >
-                          <div>
-                            <div className="flex justify-between items-start gap-2 mb-1">
-                              <h4 className="font-black truncate text-xs text-black leading-tight flex-1" title={decodeHtmlEntities(rec.title)}>
-                                {decodeHtmlEntities(rec.title)}
-                              </h4>
-                              <span className="bg-brand-yellow font-mono font-black text-[9px] px-1.5 py-0.5 rounded border border-black shrink-0">
-                                {rec.estimatedBpm} BPM
-                              </span>
-                            </div>
-                            <p className="font-mono text-[10px] text-slate-500 font-bold truncate mb-2">
-                              {decodeHtmlEntities(rec.artist)}
-                            </p>
-                            <p className="font-mono text-[9.5px] text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200 line-clamp-2 leading-relaxed">
-                              &quot;{decodeHtmlEntities(rec.vibeReview)}&quot;
-                            </p>
-                          </div>
+                          <Download className="w-4 h-4 text-brand-pink group-hover:scale-110 transition-transform fill-current" />
+                        </motion.div>
+                        <span>DOWNLOAD UNIVERSAL CSV</span>
+                      </motion.button>
 
-                          <div className="flex items-center gap-2 pt-1 border-t border-dashed border-slate-200">
-                            <button
-                              onClick={() => handleOpenPreview(rec)}
-                              className="flex-1 bg-white neo-border-xs text-black py-1.5 px-2 rounded-lg font-mono font-bold text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-slate-100 transition-colors"
-                            >
-                              <Volume2 className="w-3.5 h-3.5 text-brand-pink" />
-                              Preview 15s
-                            </button>
-
-                            <button
-                              onClick={() => handleAddRecommendation(rec)}
-                              className="flex-1 bg-brand-yellow neo-border-xs text-black py-1.5 px-2 rounded-lg font-mono font-black text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-brand-yellow/80 transition-colors"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              Add to Flow
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                      <NeoButton
+                        color="white"
+                        className="w-full justify-center"
+                        onClick={() => {
+                          setIsComplete(false);
+                          setDisplayTracks(originalTracks);
+                          setHarshTracks([]);
+                          setRecommendations([]);
+                        }}
+                      >
+                        Reset and Try Again
+                      </NeoButton>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
 
-              {/* Harsh Tracks Excluded */}
-              {isComplete && harshTracks.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#FFE5E5] border-3 border-red-500 rounded-3xl p-6 shadow-[4px_4px_0px_0px_rgba(239,68,68,1)]"
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center">
-                      <AlertCircle className="w-5 h-5" />
+              {/* RIGHT COLUMN: Active Tab Content ONLY */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Main Track List Container (Visible ONLY when chaotic or optimized tab is active, or before completion) */}
+                {(activeSequenceTab === 'optimized' || activeSequenceTab === 'chaotic' || !isComplete) && (
+                  <div className="bg-white neo-border border-black rounded-3xl p-6 overflow-hidden">
+                    <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-4">
+                      <h2 className="text-xl font-black uppercase flex items-center gap-2">
+                        {isComplete ? (
+                          activeSequenceTab === 'chaotic' ? (
+                            <>
+                              <span className="bg-brand-orange text-white text-xs px-2.5 py-1 rounded-full neo-border-xs border-black">1. Chaotic</span>
+                              <span>Original Sequence (Unsorted)</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-5 h-5 text-brand-yellow fill-current" />
+                              <span>2. Optimized Sequence</span>
+                            </>
+                          )
+                        ) : (
+                          'Current Sequence'
+                        )}
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-black bg-black text-white px-2 py-1 rounded-md">
+                          {activeSequenceTab === 'chaotic' ? originalTracks.length : displayTracks.length} Tracks
+                        </span>
+                        {isComplete && (
+                          <motion.button
+                            whileHover={{ scale: 1.08, y: -2 }}
+                            whileTap={{ scale: 0.94 }}
+                            onClick={handleDownloadCSV}
+                            title="Download sequence & recommendations as CSV"
+                            className="bg-brand-yellow neo-border-xs border-black px-3 py-1 rounded-md text-xs font-black uppercase font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center gap-1.5 text-black cursor-pointer group"
+                          >
+                            <motion.div animate={{ y: [0, -1.5, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                              <Download className="w-3.5 h-3.5 text-black group-hover:scale-110 transition-transform" />
+                            </motion.div>
+                            <span>CSV</span>
+                          </motion.button>
+                        )}
+                      </div>
                     </div>
-                    <h2 className="text-lg font-black uppercase text-red-700">Excluded (Harsh Vibe Check)</h2>
-                  </div>
 
-                  <p className="font-mono text-xs font-bold text-red-600 mb-4">
-                    These tracks completely ruined the {flowModes.find((m) => m.id === selectedMode)?.title} aesthetic. We removed them to save your flow.
-                  </p>
-
-                  <div className="max-h-[30vh] overflow-y-auto pr-2">
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {harshTracks.map((track) => (
-                        <li key={track.videoId} className="bg-white border-2 border-red-500 p-2 rounded-xl flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-black text-[11px] truncate">{decodeHtmlEntities(track.title)}</h4>
-                            <p className="font-mono text-[9px] text-slate-500 truncate">{decodeHtmlEntities(track.artist)}</p>
+                    <div className="relative">
+                      {isGenerating && (
+                        <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+                          <div className="bg-white/80 neo-border border-black p-6 rounded-3xl flex flex-col items-center shadow-lg backdrop-blur-sm pointer-events-auto">
+                            <SpinningBlocks />
+                            <p className="mt-4 font-black uppercase text-brand-pink tracking-widest text-sm animate-pulse">Syncing Vibes...</p>
                           </div>
-                        </li>
-                      ))}
-                    </ul>
+                        </div>
+                      )}
+
+                      <div
+                        className={cn(
+                          'transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2',
+                          isGenerating && 'blur-[6px] opacity-40 grayscale-[30%] pointer-events-none overflow-hidden'
+                        )}
+                      >
+                        <ul className="space-y-2 flex flex-col relative">
+                          <AnimatePresence>
+                            {(activeSequenceTab === 'chaotic' ? originalTracks : displayTracks).map((track, idx) => (
+                              <motion.li
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 80,
+                                  damping: 20,
+                                  duration: 1.2,
+                                }}
+                                key={track.videoId + (activeSequenceTab === 'chaotic' ? '_chaotic' : '_opt')}
+                                className="flex items-center gap-3 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white"
+                              >
+                                <div className={cn(
+                                  'w-8 h-8 rounded-full neo-border border-black flex items-center justify-center font-black shrink-0 text-sm',
+                                  activeSequenceTab === 'chaotic' ? 'bg-brand-orange text-white' : 'bg-brand-yellow text-black'
+                                )}>
+                                  {track.displayIndex || idx + 1}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-black text-sm truncate" title={decodeHtmlEntities(track.title)}>{decodeHtmlEntities(track.title)}</h4>
+                                  <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{decodeHtmlEntities(track.artist)}</p>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {track.estimatedBpm && (
+                                    <div className="flex gap-2 text-right hidden sm:flex">
+                                      <div className="flex flex-col">
+                                        <span className="font-mono text-[9px] uppercase font-black text-slate-400">BPM</span>
+                                        <span className="font-black text-xs">{Math.round(track.estimatedBpm)}</span>
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="font-mono text-[9px] uppercase font-black text-slate-400">NRG</span>
+                                        <span className="font-black text-xs text-brand-pink">{track.intensityScore?.toFixed(2)}</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* 15s Snippet Preview Trigger Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPreview(track)}
+                                    title="Listen to 15s Snippet & AI Review"
+                                    className="bg-brand-pink text-white neo-border-xs px-2 py-1 rounded-lg text-[10px] font-black uppercase font-mono hover:scale-105 transition-transform flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Volume2 className="w-3.5 h-3.5" />
+                                    <span className="hidden md:inline">15s Snippet</span>
+                                  </button>
+                                </div>
+                              </motion.li>
+                            ))}
+                          </AnimatePresence>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
-                </motion.div>
-              )}
+                )}
+
+                {/* Related Song Recommendations ("Next Up / Vibe Extensions") - Visible ONLY when recommendations tab is active */}
+                {isComplete && activeSequenceTab === 'recommendations' && (
+                  <div className="bg-[#FFFDE8] neo-border border-black rounded-3xl p-6 relative">
+                    <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-3">
+                      <div>
+                        <h3 className="text-lg font-black uppercase text-black flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-brand-orange fill-current" />
+                          3. Recommended Next Up (Vibe Extensions)
+                        </h3>
+                        <p className="font-mono text-xs font-bold text-slate-600 mt-0.5">
+                          Hand-picked songs related to your playlist vibe. Click &quot;Add to Flow&quot; to append or download CSV.
+                        </p>
+                      </div>
+
+                      <motion.button
+                        whileHover={{ scale: 1.06, y: -2 }}
+                        whileTap={{ scale: 0.94 }}
+                        onClick={handleDownloadCSV}
+                        title="Download full sequence + recommendations as CSV"
+                        className="bg-white neo-border-xs border-black px-3 py-1.5 rounded-lg text-xs font-black uppercase font-mono shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-50 transition-all flex items-center gap-1.5 shrink-0 text-black cursor-pointer group"
+                      >
+                        <motion.div animate={{ y: [0, -1.5, 0] }} transition={{ repeat: Infinity, duration: 1.6 }}>
+                          <Download className="w-3.5 h-3.5 text-brand-pink group-hover:scale-110 transition-transform fill-current" />
+                        </motion.div>
+                        <span>Download CSV</span>
+                      </motion.button>
+                    </div>
+
+                    {isLoadingRecommendations ? (
+                      <div className="flex items-center justify-center py-8 gap-3 font-mono text-xs font-black">
+                        <Loader2 className="w-6 h-6 animate-spin text-brand-pink" />
+                        Analyzing vibe continuation...
+                      </div>
+                    ) : recommendations.length === 0 ? (
+                      <div className="text-center py-6 font-mono text-xs text-slate-500 font-bold">
+                        No additional recommendations found.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {recommendations.map((rec) => (
+                          <div
+                            key={rec.videoId}
+                            className="bg-white neo-border-sm p-3 rounded-2xl flex flex-col justify-between gap-3 text-xs shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <div>
+                              <div className="flex justify-between items-start gap-2 mb-1">
+                                <h4 className="font-black truncate text-xs text-black leading-tight flex-1" title={decodeHtmlEntities(rec.title)}>
+                                  {decodeHtmlEntities(rec.title)}
+                                </h4>
+                                <span className="bg-brand-yellow font-mono font-black text-[9px] px-1.5 py-0.5 rounded border border-black shrink-0">
+                                  {rec.estimatedBpm} BPM
+                                </span>
+                              </div>
+                              <p className="font-mono text-[10px] text-slate-500 font-bold truncate mb-2">
+                                {decodeHtmlEntities(rec.artist)}
+                              </p>
+                              <p className="font-mono text-[9.5px] text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200 line-clamp-2 leading-relaxed">
+                                &quot;{decodeHtmlEntities(rec.vibeReview)}&quot;
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1 border-t border-dashed border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPreview(rec)}
+                                className="flex-1 bg-white neo-border-xs text-black py-1.5 px-2 rounded-lg font-mono font-bold text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-slate-100 transition-colors cursor-pointer"
+                              >
+                                <Volume2 className="w-3.5 h-3.5 text-brand-pink" />
+                                Preview 15s
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleAddRecommendation(rec)}
+                                className="flex-1 bg-brand-yellow neo-border-xs text-black py-1.5 px-2 rounded-lg font-mono font-black text-[10px] uppercase flex items-center justify-center gap-1 hover:bg-brand-yellow/80 transition-colors cursor-pointer"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                Add to Flow
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Harsh Tracks Excluded - Visible ONLY when harsh tab is active */}
+                {isComplete && activeSequenceTab === 'harsh' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-[#FFE5E5] border-3 border-red-500 rounded-3xl p-6 shadow-[4px_4px_0px_0px_rgba(239,68,68,1)]"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <h2 className="text-lg font-black uppercase text-red-700">4. Excluded (Harsh Vibe Check)</h2>
+                    </div>
+
+                    {harshTracks.length === 0 ? (
+                      <p className="font-mono text-xs font-bold text-slate-600 bg-white p-4 rounded-xl border border-red-200">
+                        ✨ 0 Harsh Transitions Found! All tracks fit the {flowModes.find((m) => m.id === selectedMode)?.title || 'Selected'} vibe profile naturally.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="font-mono text-xs font-bold text-red-600 mb-4">
+                          These tracks completely ruined the {flowModes.find((m) => m.id === selectedMode)?.title} aesthetic. We removed them to save your flow.
+                        </p>
+
+                        <div className="max-h-[30vh] overflow-y-auto pr-2">
+                          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {harshTracks.map((track) => (
+                              <li key={track.videoId} className="bg-white border-2 border-red-500 p-2 rounded-xl flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-black text-[11px] truncate">{decodeHtmlEntities(track.title)}</h4>
+                                  <p className="font-mono text-[9px] text-slate-500 truncate">{decodeHtmlEntities(track.artist)}</p>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </div>
             </div>
           </div>
         )}

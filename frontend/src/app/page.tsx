@@ -16,6 +16,7 @@ import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
 import { FlowSandbox } from '@/components/FlowSandbox';
 import { TextLogo } from '@/components/TextLogo';
+import { Header } from '@/components/Header';
 import { env } from '@/lib/env';
 
 interface UserProfile {
@@ -82,43 +83,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F8FFE5] text-black relative pb-16">
 
-      {/* 1. STYLISH NAVBAR */}
-      {/* Centralized styling: replaced border-b-3 border-black with unified neo-border-b class */}
-      <header className="w-full py-5 px-6 md:px-12 neo-border-b bg-white flex items-center justify-between sticky top-0 z-50 select-none">
-        <div className="flex items-center">
-          <TextLogo />
-        </div>
-
-        <nav className="hidden md:flex items-center gap-8 font-mono font-black text-sm uppercase">
-          <a href="#transformation" className="hover:text-brand-pink transition-colors">Flow Fixer</a>
-          <a href="#modes" className="hover:text-brand-blue transition-colors">Modes</a>
-          <a href="#how-it-works" className="hover:text-brand-orange transition-colors">How It Works</a>
-        </nav>
-
-        <div className="flex items-center gap-3">
-          {userProfile ? (
-            /* Centralized styling: removed redundant border-black utility since neo-border handles black border natively */
-            <div className="flex items-center gap-2 bg-[#F8FFE5] neo-border px-3.5 py-1.5 rounded-xl select-none">
-              {userProfile.images?.[0]?.url && (
-                <img
-                  src={userProfile.images[0].url}
-                  alt={userProfile.display_name}
-                  className="w-6 h-6 rounded-full neo-border-sm"
-                />
-              )}
-              <span className="font-mono text-xs font-black text-black">
-                {userProfile.display_name || 'YouTube Music Active'}
-              </span>
-            </div>
-          ) : (
-            <a href={`${env.apiUrl}/auth/login`}>
-              <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex">
-                Connect YouTube Music
-              </NeoButton>
-            </a>
-          )}
-        </div>
-      </header>
+      {/* 1. ANIMATED STYLISH NAVBAR */}
+      <Header userProfile={userProfile} />
 
       {/* 2. HERO SECTION */}
       <section className="relative py-16 px-6 md:px-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

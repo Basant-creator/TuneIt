@@ -2,9 +2,36 @@ export interface CSVTrackInput {
   videoId?: string;
   title: string;
   artist: string;
+  album?: string;
   estimatedBpm?: number;
   intensityScore?: number;
   vibeReview?: string;
+}
+
+/**
+ * Cleans YouTube artist strings by removing common YouTube channel suffixes
+ * such as "- Topic", "Release - Topic", "- VEVO", etc.
+ */
+export function cleanArtistName(artist: string): string {
+  if (!artist) return '';
+  const cleaned = artist
+    .replace(/\s*-\s*topic$/i, '')
+    .replace(/\s*topic$/i, '')
+    .replace(/\s*-\s*vevo$/i, '')
+    .replace(/\s*vevo$/i, '')
+    .trim();
+  return cleaned || artist;
+}
+
+/**
+ * Cleans YouTube track titles by removing video clutter like (Official Video),
+ * [Official HD Video], (Lyric Video), [Official Audio], etc.
+ */
+export function cleanTrackTitle(title: string): string {
+  if (!title) return '';
+  return title
+    .replace(/\s*[\(\[\{](official\s*(music\s*)?(video|audio|hd|4k|lyric\s*video|visualizer)|hd|4k|lyric\s*video|official)[\)\]\}]/gi, '')
+    .trim();
 }
 
 /**
@@ -17,56 +44,40 @@ function escapeCSVCell(val: string | number | undefined | null): string {
 }
 
 /**
- * Generates and triggers a browser download of a clean CSV playlist file.
- * Compatible with music converters (Soundiiz, TuneMyMusic) & Excel / Notion.
+ * Generates and triggers a browser download of a clean universal CSV playlist file.
+ * Industry-standard header: Title, Artist, Album, URL
+ * Fully compatible with Apple Music, Soundiiz, TuneMyMusic, SongShift & Excel.
  */
 export function downloadPlaylistCSV(
   playlistTitle: string,
   tracks: CSVTrackInput[],
   recommendations: CSVTrackInput[] = []
 ): void {
-  const headers = [
-    'Position',
-    'Type',
-    'Track Title',
-    'Artist Name',
-    'Estimated BPM',
-    'Intensity Score',
-    'Vibe Review',
-    'YouTube URL',
-  ];
+  const headers = ['Title', 'Artist', 'Album', 'URL'];
 
   const rows: string[][] = [];
 
   // Add main sequence tracks
-  tracks.forEach((t, i) => {
-    rows.push([
-      String(i + 1),
-      'Sequence Track',
-      t.title,
-      t.artist,
-      t.estimatedBpm ? String(Math.round(t.estimatedBpm)) : '120',
-      t.intensityScore !== undefined ? t.intensityScore.toFixed(2) : '0.50',
-      t.vibeReview || '',
-      t.videoId ? `https://www.youtube.com/watch?v=${t.videoId}` : '',
-    ]);
+  tracks.forEach((t) => {
+    const title = cleanTrackTitle(t.title);
+    const artist = cleanArtistName(t.artist);
+    const album = t.album ? t.album.trim() : '';
+    const url = t.videoId ? `https://www.youtube.com/watch?v=${t.videoId}` : '';
+
+    rows.push([title, artist, album, url]);
   });
 
   // Add recommendations if present
-  recommendations.forEach((rec, i) => {
-    rows.push([
-      String(tracks.length + i + 1),
-      'AI Recommendation Extension',
-      rec.title,
-      rec.artist,
-      rec.estimatedBpm ? String(Math.round(rec.estimatedBpm)) : '122',
-      rec.intensityScore !== undefined ? rec.intensityScore.toFixed(2) : '0.50',
-      rec.vibeReview || 'AI Vibe Extension Proposal',
-      rec.videoId ? `https://www.youtube.com/watch?v=${rec.videoId}` : '',
-    ]);
+  recommendations.forEach((rec) => {
+    const title = cleanTrackTitle(rec.title);
+    const artist = cleanArtistName(rec.artist);
+    const album = rec.album ? rec.album.trim() : '';
+    const url = rec.videoId ? `https://www.youtube.com/watch?v=${rec.videoId}` : '';
+
+    rows.push([title, artist, album, url]);
   });
 
-  // Build CSV string with UTF-8 BOM for Excel
+  // Build CSV string with UTF-8 BOM for Excel & Apple Music importers
   const csvContent =
     '\uFEFF' +
     [
