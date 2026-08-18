@@ -180,20 +180,19 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
 
           {/* Audio Player Showcase Box (Pure Audio - No Video) */}
           <div className="w-full h-40 rounded-2xl neo-border mb-4 bg-[#111] relative overflow-hidden flex flex-col items-center justify-center p-4 text-white shadow-inner">
-            {/* Background Animated Sound Wave Bars when Playing */}
+            {/* Background Animated Sound Wave Bars when Playing (GPU scaleY) */}
             {isPlaying && (
               <div className="absolute inset-0 flex items-center justify-around px-8 opacity-25 pointer-events-none">
                 {Array.from({ length: 12 }).map((_, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    animate={{ height: [12, 48, 8, 64, 16] }}
-                    transition={{
-                      duration: 0.9,
-                      repeat: Infinity,
-                      delay: i * 0.07,
-                      ease: 'easeInOut',
+                    style={{
+                      height: '50px',
+                      transformOrigin: 'center',
+                      animation: 'soundwave-pulse 0.9s ease-in-out infinite',
+                      animationDelay: `${i * 0.07}s`,
                     }}
-                    className="w-1.5 bg-brand-yellow rounded-full"
+                    className="w-1.5 bg-brand-yellow rounded-full gpu-layer"
                   />
                 ))}
               </div>

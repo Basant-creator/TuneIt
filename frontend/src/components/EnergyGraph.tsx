@@ -38,7 +38,7 @@ export function EnergyGraph({ className, activeMode = 'chaotic' }: EnergyGraphPr
   ];
 
   return (
-    <div className={cn('neo-border neo-shadow p-6 rounded-2xl bg-white flex flex-col w-full h-full relative overflow-hidden', className)}>
+    <div className={cn('neo-border neo-shadow p-6 rounded-2xl bg-white flex flex-col w-full h-full relative overflow-hidden gpu-layer', className)}>
       
       {/* Graph Header */}
       <div className="flex items-center justify-between mb-4 border-b border-black pb-3">

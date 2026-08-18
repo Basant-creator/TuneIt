@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { TextLogo } from '@/components/TextLogo';
 import { NeoButton } from '@/components/NeoButton';
+import { TrackImage } from '@/components/TrackImage';
 import { cn } from '@/utils/cn';
 import { env } from '@/lib/env';
 
@@ -26,11 +26,15 @@ export function Header({
   const [isScrolled, setIsScrolled] = React.useState(false);
 
   React.useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      if (window.scrollY > 40) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 30);
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
@@ -40,18 +44,11 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-50 w-full flex justify-center select-none pointer-events-none p-2 sm:p-3">
-      <motion.div
-        layout
-        transition={{
-          type: 'spring',
-          stiffness: 220,
-          damping: 26,
-          mass: 0.8,
-        }}
+      <div
         className={cn(
-          'pointer-events-auto flex items-center justify-between w-full transition-all duration-300 select-none',
+          'pointer-events-auto flex items-center justify-between w-full transition-all duration-300 ease-out select-none gpu-layer',
           isScrolled
-            ? 'max-w-4xl bg-white/95 backdrop-blur-md border-2 border-black rounded-full px-5 md:px-8 py-2.5 shadow-none'
+            ? 'max-w-4xl bg-white/95 backdrop-blur-md border-2 border-black rounded-full px-5 md:px-8 py-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.06)]'
             : 'max-w-full bg-white border-b-2 border-black rounded-none px-6 md:px-12 py-4 shadow-none -mt-2 -mx-2 sm:-mt-3 sm:-mx-3 w-[calc(100%+1rem)] sm:w-[calc(100%+1.5rem)]'
         )}
       >
@@ -92,10 +89,10 @@ export function Header({
           {userProfile ? (
             <div className="flex items-center gap-2 bg-[#F8FFE5] border-2 border-black px-3 py-1.5 rounded-full select-none shadow-none shrink-0">
               {userProfile.images?.[0]?.url && (
-                <img
+                <TrackImage
                   src={userProfile.images[0].url}
                   alt={userProfile.display_name || 'User'}
-                  className="w-5 h-5 rounded-full border border-black"
+                  containerClassName="w-5 h-5 rounded-full border border-black overflow-hidden"
                 />
               )}
               <span className="font-mono text-xs font-black text-black max-w-[120px] truncate">
@@ -110,7 +107,8 @@ export function Header({
             </a>
           )}
         </div>
-      </motion.div>
+      </div>
     </header>
   );
 }
+

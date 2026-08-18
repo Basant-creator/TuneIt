@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/utils/cn';
 import { Shuffle, Check, ArrowRight } from 'lucide-react';
 import { NeoButton } from './NeoButton';
+import { TrackImage } from './TrackImage';
 
 interface FloatingSong {
   id: string;
@@ -87,7 +88,7 @@ export function HeroVisualization() {
         
         {/* State Label Sticker */}
         <span className={cn(
-          'absolute top-4 left-4 neo-border px-3 py-1 text-xs font-black uppercase rounded-lg shadow-sm z-30 transition-colors',
+          'absolute top-4 left-4 neo-border px-3 py-1 text-xs font-black uppercase rounded-lg shadow-sm z-30 transition-colors duration-200',
           flowFixed ? 'bg-brand-blue text-black' : 'bg-brand-orange text-white'
         )}>
           {flowFixed ? 'Flow Fixed!' : 'Chaotic Arrangement'}
@@ -103,6 +104,7 @@ export function HeroVisualization() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
                 className="absolute inset-0 flex flex-col items-center justify-center gap-16 pointer-events-none"
               >
                 {/* Connecting arrow stickers */}
@@ -116,21 +118,18 @@ export function HeroVisualization() {
                   <ArrowRight className="w-3.5 h-3.5 rotate-90 stroke-[3px]" />
                 </div>
 
-                {/* Animated Pulsing Sound Wave Background */}
+                {/* GPU-Accelerated Pulsing Sound Wave Background (Zero Layout Thrashing) */}
                 <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-44 rounded-3xl bg-brand-pink/5 border-2 border-dashed border-brand-pink/30 flex items-center justify-around px-8 pointer-events-none z-0">
                   {Array.from({ length: 16 }).map((_, i) => (
-                    <motion.div
+                    <div
                       key={i}
-                      animate={{
-                        height: [20, 60, 10, 80, 20],
+                      style={{
+                        height: '60px',
+                        transformOrigin: 'center',
+                        animation: `soundwave-pulse 1.1s ease-in-out infinite`,
+                        animationDelay: `${i * 0.07}s`,
                       }}
-                      transition={{
-                        duration: 1.2,
-                        repeat: Infinity,
-                        delay: i * 0.08,
-                        ease: 'easeInOut',
-                      }}
-                      className="w-1.5 bg-brand-pink/20 rounded-full"
+                      className="w-1.5 bg-brand-pink/30 rounded-full gpu-layer"
                     />
                   ))}
                 </div>
@@ -153,20 +152,20 @@ export function HeroVisualization() {
                 }}
                 transition={{
                   type: 'spring',
-                  stiffness: 120,
-                  damping: 14,
+                  stiffness: 340,
+                  damping: 22,
+                  mass: 0.5,
                 }}
                 className={cn(
-                  'absolute neo-border p-3 w-[260px] rounded-xl flex items-center gap-3 bg-white text-black shadow-sm z-20',
-                  flowFixed && 'hover:scale-105 transition-transform'
+                  'absolute neo-border p-3 w-[260px] rounded-xl flex items-center gap-3 bg-white text-black shadow-sm z-20 gpu-layer',
+                  flowFixed && 'hover:scale-105 transition-transform duration-150'
                 )}
               >
-                {/* Album Cover */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                {/* Album Cover with Shimmer & Fallback */}
+                <TrackImage
                   src={song.coverUrl}
                   alt={song.name}
-                  className="w-9 h-9 rounded-lg object-cover neo-border shrink-0"
+                  containerClassName="w-9 h-9 rounded-lg neo-border shrink-0"
                 />
 
                 {/* Info details */}
@@ -196,6 +195,7 @@ export function HeroVisualization() {
           })}
         </div>
       </div>
+
 
       {/* Primary Trigger Switch */}
       <div className="mt-8 flex flex-col items-center gap-3">

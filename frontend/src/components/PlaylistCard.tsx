@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from '@/utils/cn';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { TrackImage } from './TrackImage';
 
 interface TrackItem {
   id: string;
@@ -36,7 +37,7 @@ export function PlaylistCard({
   return (
     <div
       className={cn(
-        'neo-border neo-shadow p-6 rounded-2xl flex flex-col h-full',
+        'neo-border neo-shadow p-6 rounded-2xl flex flex-col h-full gpu-layer',
         isChaotic ? 'bg-white' : 'bg-brand-pink text-white',
         className
       )}
@@ -82,7 +83,7 @@ export function PlaylistCard({
       )}
 
       {/* Track List */}
-      <div className="space-y-3 flex-1 overflow-y-auto max-h-[360px] pr-1 no-scrollbar">
+      <div data-lenis-prevent="true" className="space-y-3 flex-1 overflow-y-auto max-h-[360px] pr-1 no-scrollbar overscroll-contain">
         {tracks.map((track, idx) => {
           // Calculate transition gap for sequenced flow
           const nextTrack = tracks[idx + 1];
@@ -94,7 +95,7 @@ export function PlaylistCard({
             <div key={track.id} className="relative">
               <div
                 className={cn(
-                  'neo-border p-3 rounded-xl flex items-center justify-between gap-4 transition-transform hover:scale-[1.01]',
+                  'neo-border p-3 rounded-xl flex items-center justify-between gap-4 transition-transform duration-150 hover:scale-[1.01]',
                   isChaotic ? 'bg-slate-50 border-black' : 'bg-white text-black border-black'
                 )}
               >
@@ -108,11 +109,10 @@ export function PlaylistCard({
                   >
                     {idx + 1}
                   </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <TrackImage
                     src={track.coverUrl}
                     alt={track.name}
-                    className="w-10 h-10 rounded-lg object-cover neo-border shrink-0"
+                    containerClassName="w-10 h-10 rounded-lg neo-border shrink-0"
                   />
                   <div className="min-w-0">
                     <p className="font-extrabold text-sm truncate leading-none mb-1">
@@ -123,6 +123,7 @@ export function PlaylistCard({
                     </p>
                   </div>
                 </div>
+
 
                 {/* Right - Energy / BPM and Keys */}
                 <div className="flex items-center gap-4 shrink-0 text-right">

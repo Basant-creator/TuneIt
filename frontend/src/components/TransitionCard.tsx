@@ -4,6 +4,7 @@ import * as React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/cn';
 import { Volume2 } from 'lucide-react';
+import { TrackImage } from './TrackImage';
 
 interface SimpleTrack {
   name: string;
@@ -31,12 +32,15 @@ export function TransitionCard({
   className,
 }: TransitionCardProps) {
   return (
-    <div className={cn('flex flex-col items-center w-full max-w-lg', className)}>
+    <div className={cn('flex flex-col items-center w-full max-w-lg gpu-layer', className)}>
       {/* Track A Card */}
       <div className="neo-border w-full p-3 rounded-xl bg-white flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={trackA.coverUrl} alt={trackA.name} className="w-10 h-10 rounded-lg object-cover neo-border shrink-0" />
+          <TrackImage
+            src={trackA.coverUrl}
+            alt={trackA.name}
+            containerClassName="w-10 h-10 rounded-lg neo-border shrink-0"
+          />
           <div className="min-w-0">
             <h5 className="font-extrabold text-sm truncate leading-none mb-1">{trackA.name}</h5>
             <p className="text-xs text-slate-500 truncate leading-none">{trackA.artist}</p>
@@ -56,6 +60,7 @@ export function TransitionCard({
         {/* Transition Score Pill */}
         <motion.div
           whileHover={{ scale: 1.05, rotate: 1 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           className="neo-border py-2 px-4 rounded-xl bg-brand-yellow text-black z-10 font-mono text-xs flex flex-col items-center justify-center gap-1 min-w-[200px] shadow-sm relative"
         >
           <div className="flex items-center gap-1.5 font-extrabold uppercase">
@@ -75,8 +80,11 @@ export function TransitionCard({
       {/* Track B Card */}
       <div className="neo-border w-full p-3 rounded-xl bg-white flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={trackB.coverUrl} alt={trackB.name} className="w-10 h-10 rounded-lg object-cover neo-border shrink-0" />
+          <TrackImage
+            src={trackB.coverUrl}
+            alt={trackB.name}
+            containerClassName="w-10 h-10 rounded-lg neo-border shrink-0"
+          />
           <div className="min-w-0">
             <h5 className="font-extrabold text-sm truncate leading-none mb-1">{trackB.name}</h5>
             <p className="text-xs text-slate-500 truncate leading-none">{trackB.artist}</p>
@@ -90,3 +98,4 @@ export function TransitionCard({
     </div>
   );
 }
+

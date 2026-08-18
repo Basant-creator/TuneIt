@@ -410,7 +410,6 @@ export default function PlaylistModifierPage() {
                           )}
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            {mode.emoji && <span className="text-2xl">{mode.emoji}</span>}
                             <h3 className="font-black uppercase text-sm">{mode.title}</h3>
                           </div>
                           <p
@@ -565,8 +564,9 @@ export default function PlaylistModifierPage() {
                       )}
 
                       <div
+                        data-lenis-prevent="true"
                         className={cn(
-                          'transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2',
+                          'transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2 overscroll-contain',
                           isGenerating && 'blur-[6px] opacity-40 grayscale-[30%] pointer-events-none overflow-hidden'
                         )}
                       >
@@ -575,17 +575,17 @@ export default function PlaylistModifierPage() {
                             {(activeSequenceTab === 'chaotic' ? originalTracks : displayTracks).map((track, idx) => (
                               <motion.li
                                 layout
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{
                                   type: 'spring',
-                                  stiffness: 80,
-                                  damping: 20,
-                                  duration: 1.2,
+                                  stiffness: 280,
+                                  damping: 24,
+                                  mass: 0.6,
                                 }}
                                 key={track.videoId + (activeSequenceTab === 'chaotic' ? '_chaotic' : '_opt')}
-                                className="flex items-center gap-3 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white"
+                                className="flex items-center gap-3 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white gpu-layer"
                               >
                                 <div className={cn(
                                   'w-8 h-8 rounded-full neo-border border-black flex items-center justify-center font-black shrink-0 text-sm',
@@ -744,7 +744,7 @@ export default function PlaylistModifierPage() {
                           These tracks completely ruined the {flowModes.find((m) => m.id === selectedMode)?.title} aesthetic. We removed them to save your flow.
                         </p>
 
-                        <div className="max-h-[30vh] overflow-y-auto pr-2">
+                        <div data-lenis-prevent="true" className="max-h-[30vh] overflow-y-auto pr-2 overscroll-contain">
                           <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {harshTracks.map((track) => (
                               <li key={track.videoId} className="bg-white border-2 border-red-500 p-2 rounded-xl flex items-center gap-3">

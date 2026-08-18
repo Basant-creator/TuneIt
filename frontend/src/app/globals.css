@@ -58,7 +58,7 @@
 }
 
 .neo-interactive {
-  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .neo-interactive:hover {
@@ -71,12 +71,111 @@
   box-shadow: 4px 4px 0px 0px #000000;
 }
 
+/* Lenis Smooth Scroll Core */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* Hardware Acceleration & Smooth Rendering Utilities */
+.gpu-layer {
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+/* GPU-Accelerated Compositor Keyframes (Zero Main-Thread Freezing) */
+@keyframes doodle-float-1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate3d(5px, -8px, 0) rotate(-3deg) scale(1.03);
+  }
+  66% {
+    transform: translate3d(-4px, 5px, 0) rotate(4deg) scale(0.97);
+  }
+}
+
+@keyframes doodle-float-2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate3d(-5px, 6px, 0) rotate(3deg) scale(0.97);
+  }
+  66% {
+    transform: translate3d(4px, -5px, 0) rotate(-4deg) scale(1.03);
+  }
+}
+
+@keyframes soundwave-pulse {
+  0%, 100% {
+    transform: scaleY(0.18);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes shimmer-pulse {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-doodle-1 {
+  animation: doodle-float-1 5s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.animate-doodle-2 {
+  animation: doodle-float-2 6.5s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.shimmer-placeholder {
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.2s ease-in-out infinite;
+}
+
 body {
   font-family: var(--font-mono), monospace;
   background-color: var(--background);
   color: var(--foreground);
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
 
 h1 {
   font-family: var(--font-heading), sans-serif;

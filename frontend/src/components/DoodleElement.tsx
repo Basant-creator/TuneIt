@@ -19,10 +19,6 @@ export function DoodleElement({
   color = 'currentColor',
   animate = true,
 }: DoodleElementProps) {
-  const [randomDelay] = React.useState(() =>
-    typeof window !== 'undefined' ? Math.random() * 3 : 0
-  );
-
   // SVG paths for hand-drawn music and Brutalist elements
   const svgs: Record<DoodleType, React.ReactNode> = {
     arrow: (
@@ -110,31 +106,24 @@ export function DoodleElement({
     ),
   };
 
-  const animationProps = animate
-    ? {
-        animate: {
-          x: [0, 6, -4, 5, -5, 3, 0],
-          y: [0, -14, 5, -10, 8, -5, 0],
-          rotate: [0, -6, 8, -4, 6, -3, 0],
-          scale: [1, 1.06, 0.94, 1.03, 0.97, 1.02, 1],
-        },
-        transition: {
-          duration: 6,
-          repeat: Infinity,
-          repeatType: 'mirror' as const,
-          ease: 'easeInOut' as const,
-          delay: randomDelay,
-        },
-      }
-    : {};
+  const animationClass = animate
+    ? type === 'arrow' || type === 'sparkle' || type === 'musicNote'
+      ? 'animate-doodle-1'
+      : 'animate-doodle-2'
+    : '';
 
   return (
     <motion.div
-      {...animationProps}
-      whileHover={animate ? { scale: 1.15, rotate: 10 } : {}}
-      className={cn('inline-block select-none pointer-events-auto', className)}
+      whileHover={animate ? { scale: 1.15, rotate: 8 } : {}}
+      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+      className={cn(
+        'inline-block select-none pointer-events-auto gpu-layer',
+        animationClass,
+        className
+      )}
     >
       {svgs[type]}
     </motion.div>
   );
 }
+

@@ -6,6 +6,7 @@ import { cn } from '@/utils/cn';
 import { Check, Info } from 'lucide-react';
 import { Track, PRESET_TRACKS } from '@/data/presetTracks';
 import { getTransitionPenalty, getTransitionScore, getEffectiveBpm } from '@/utils/flowScoring';
+import { TrackImage } from './TrackImage';
 
 interface FlowSandboxProps {
   modeId: string; // 'bu' | 'df' | 'ph' | 'cm'
@@ -213,8 +214,11 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                 )}
               >
                 {/* Image */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={track.coverUrl} alt={track.name} className="w-6.5 h-6.5 rounded neo-border-xs shrink-0 object-cover" />
+                <TrackImage
+                  src={track.coverUrl}
+                  alt={track.name}
+                  containerClassName="w-6.5 h-6.5 rounded neo-border-xs shrink-0"
+                />
 
                 <span className="min-w-0 flex-1 block">
                   <span className="font-extrabold text-[8.5px] truncate leading-tight block">{track.name}</span>
@@ -276,7 +280,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                 </div>
 
                 {/* Playlist Scroll Area */}
-                <div className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin my-1.5 min-h-0">
+                <div data-lenis-prevent="true" className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin my-1.5 min-h-0 overscroll-contain">
                   {optimizedTracks.map((track, idx) => {
                     const nextTrack = optimizedTracks[idx + 1];
                     const hasNext = !!nextTrack;
@@ -304,8 +308,12 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                             <span className="w-4 h-4 rounded bg-black text-white neo-border-xs flex items-center justify-center font-black font-mono text-[8px] shrink-0">
                               {idx + 1}
                             </span>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={track.coverUrl} alt={track.name} className="w-6.5 h-6.5 rounded neo-border-sm shrink-0 object-cover" />
+                            {/* Track Image */}
+                            <TrackImage
+                              src={track.coverUrl}
+                              alt={track.name}
+                              containerClassName="w-6.5 h-6.5 rounded neo-border-sm shrink-0"
+                            />
                             <div className="min-w-0 flex-1 pr-2">
                               <p className="font-black truncate text-[10px] leading-tight text-black">{track.name}</p>
                               <p className="font-bold text-[8px] text-slate-500 truncate leading-none mt-0.5">{track.artist}</p>

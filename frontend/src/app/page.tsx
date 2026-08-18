@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { ArrowRight, Sparkles, ListRestart, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -15,7 +15,6 @@ import { EnergyGraph } from '@/components/EnergyGraph';
 import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
 import { FlowSandbox } from '@/components/FlowSandbox';
-import { TextLogo } from '@/components/TextLogo';
 import { Header } from '@/components/Header';
 import { env } from '@/lib/env';
 
@@ -62,7 +61,14 @@ export default function Home() {
     target: containerRef,
   });
 
-  const x = useTransform(scrollYProgress, [0.1, 0.9], ['0%', '-75%']);
+  const rawX = useTransform(scrollYProgress, [0.08, 0.92], ['0%', '-75%']);
+  const x = useSpring(rawX, {
+    stiffness: 150,
+    damping: 20,
+    mass: 0.2,
+    restDelta: 0.0001,
+  });
+
 
   const fixPlaylistFlow = () => {
     setActiveTab('optimized');
@@ -97,6 +103,7 @@ export default function Home() {
           <DoodleElement type="musicNote" />
         </div>
         <div className="absolute top-1/3 right-[5%] w-24 h-24 opacity-90 pointer-events-none hidden lg:block z-20 transform -rotate-12 hover:scale-110 transition-transform duration-300">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/graphics/Happy cup.svg" alt="Happy Cup" className="w-full h-full drop-shadow-md" />
         </div>
 
@@ -175,6 +182,7 @@ export default function Home() {
           <DoodleElement type="sparkle" />
         </div>
         <div className="absolute top-28 left-6 w-40 h-40 opacity-25 pointer-events-none hidden lg:block z-0 transform -rotate-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/graphics/Spongebob-doodlebob-black 1.svg" alt="Doodlebob" className="w-full h-full" />
         </div>
 
@@ -298,7 +306,7 @@ export default function Home() {
 
           <motion.div
             style={{ x }}
-            className="flex w-[400vw] h-full"
+            className="flex w-[400vw] h-full gpu-layer will-change-transform"
           >
             {flowModes.map((mode, idx) => {
               return (
@@ -468,6 +476,7 @@ export default function Home() {
             <div className="w-12 h-12 rounded-xl neo-border bg-brand-pink text-white flex items-center justify-center font-black text-xl shadow-sm mb-4 transform -rotate-6">
               1
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/graphics/computer.svg" alt="Computer" className="absolute top-4 right-4 w-20 h-20 opacity-90 transform rotate-6 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Import Playlist</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
@@ -480,6 +489,7 @@ export default function Home() {
             <div className="w-12 h-12 rounded-xl neo-border bg-brand-blue text-black flex items-center justify-center font-black text-xl shadow-sm mb-4 transform rotate-3">
               2
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/graphics/Group (1).svg" alt="Process" className="absolute top-4 right-4 w-16 h-16 opacity-90 transform -rotate-3 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Choose Flow Curve</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">
@@ -492,6 +502,7 @@ export default function Home() {
             <div className="w-12 h-12 rounded-xl neo-border bg-brand-yellow text-black flex items-center justify-center font-black text-xl shadow-sm mb-4 transform -rotate-3">
               3
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/graphics/Paper plane.svg" alt="Paper plane" className="absolute top-4 right-4 w-16 h-16 opacity-90 transform rotate-12 pointer-events-none" />
             <h4 className="text-lg font-black uppercase mb-2">Export Journey</h4>
             <p className="text-xs font-mono font-medium text-slate-700 leading-relaxed">

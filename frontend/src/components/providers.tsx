@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { validateEnv } from '@/lib/env';
+import { SmoothScroll } from './SmoothScroll';
 
 // Proactively warn about missing environment variables in server console
 if (typeof window === 'undefined') {
@@ -36,7 +37,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <SmoothScroll>{children}</SmoothScroll>
     </NextThemesProvider>
   );
 }
+

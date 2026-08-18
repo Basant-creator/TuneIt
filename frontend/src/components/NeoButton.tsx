@@ -37,13 +37,13 @@ export function NeoButton({
   return (
     <motion.button
       whileHover={{ y: -2, x: -2 }}
-      whileTap={{ y: 1, x: 1 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+      whileTap={{ y: 1.5, x: 1.5 }}
+      transition={{ type: 'spring', stiffness: 600, damping: 25 }}
       className={cn(
-        'neo-border font-mono relative cursor-pointer select-none inline-flex items-center justify-center gap-2 text-center transition-colors uppercase duration-100',
+        'neo-border font-mono relative cursor-pointer select-none inline-flex items-center justify-center gap-2 text-center transition-colors uppercase duration-150 gpu-layer',
         colorMap[color],
         sizeMap[size],
-        !noShadow && 'neo-shadow-sm hover:shadow-[4.5px_4.5px_0px_0px_#000000] active:shadow-[2px_2px_0px_0px_#000000]',
+        !noShadow && 'neo-shadow-sm hover:shadow-[5px_5px_0px_0px_#000000] active:shadow-[1.5px_1.5px_0px_0px_#000000]',
         props.disabled && 'opacity-50 pointer-events-none shadow-none translate-x-0 translate-y-0',
         className
       )}

@@ -50,12 +50,12 @@ export function Sticker({
     <motion.div
       style={{ rotate: tilt }}
       whileHover={{ 
-        scale: 1.1, 
-        rotate: tilt + (tilt > 0 ? 5 : -5),
-        transition: { duration: 0.15 } 
+        scale: 1.08, 
+        rotate: tilt + (tilt > 0 ? 4 : -4),
       }}
+      transition={{ type: 'spring', stiffness: 550, damping: 22 }}
       className={cn(
-        'neo-border neo-shadow-sm text-center rounded-lg inline-block relative font-handwritten select-none z-10 cursor-default',
+        'neo-border neo-shadow-sm text-center rounded-lg inline-block relative font-handwritten select-none z-10 cursor-default gpu-layer',
         colorMap[color],
         sizeMap[size],
         className

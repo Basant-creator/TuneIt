@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, Music2 } from 'lucide-react';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
-import { TextLogo } from '@/components/TextLogo';
 import { Header } from '@/components/Header';
+import { TrackImage } from '@/components/TrackImage';
 import { env } from '@/lib/env';
 
 interface UserProfile {
@@ -105,22 +105,17 @@ export default function PlaylistsPage() {
             {playlists.map((playlist) => (
               <div
                 key={playlist.id}
-                className="bg-white neo-border border-black rounded-2xl overflow-hidden hover:-translate-y-2 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 flex flex-col group cursor-pointer"
+                className="bg-white neo-border border-black rounded-2xl overflow-hidden hover:-translate-y-2 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 flex flex-col group cursor-pointer gpu-layer"
                 onClick={() => router.push(`/playlists/${playlist.id}`)}
               >
                 <div className="w-full aspect-square bg-slate-100 border-b-3 border-black relative overflow-hidden">
-                  {playlist.images && playlist.images.length > 0 ? (
-                    <img
-                      src={playlist.images[0].url}
-                      alt={playlist.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-brand-orange">
-                      <Music2 className="w-12 h-12 text-black opacity-30" />
-                    </div>
-                  )}
-                  <div className="absolute top-3 right-3 bg-white neo-border border-black px-2 py-1 rounded-lg text-xs font-black font-mono">
+                  <TrackImage
+                    src={playlist.images?.[0]?.url}
+                    alt={playlist.name}
+                    containerClassName="w-full h-full"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-3 right-3 bg-white neo-border border-black px-2 py-1 rounded-lg text-xs font-black font-mono z-20">
                     {playlist.tracks?.total || 0} Tracks
                   </div>
                 </div>
