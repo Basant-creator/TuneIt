@@ -1,0 +1,55 @@
+# Local full-stack run: Postgres + backend + frontend.
+#   cp backend/.env.example backend/.env   # fill in Google + Gemini credentials
+#   docker compose up --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tuneit
+      POSTGRES_PASSWORD: tuneit
+      POSTGRES_DB: tuneit
+    ports:
+      - '5432:5432'
+    volumes:
+      - tuneit_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tuneit -d tuneit']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://tuneit:tuneit@db:5432/tuneit?schema=public
+      FRONTEND_URL: http://localhost:3000
+      GOOGLE_REDIRECT_URI: http://127.0.0.1:3001/auth/callback
+    ports:
+      - '3001:3001'
+    # Apply the schema before serving.
+    command: sh -c "npx prisma db push --skip-generate && node dist/src/server.js"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+
+volumes:
+  tuneit_pgdata:

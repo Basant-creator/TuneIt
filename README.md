@@ -90,18 +90,44 @@ TuneIt Workspace Root
  │    ├── src/
  │    │    ├── config/       # Environment & Google OAuth Configuration
  │    │    ├── controllers/  # API Route Handlers (Playlists, Auth, Flow Rearranging)
+ │    │    ├── middleware/   # Per-visitor session resolution & auth guard
  │    │    ├── routes/       # Auth & Playlist Endpoints
- │    │    ├── services/     # AI Metadata Analysis & YouTube API Services
- │    │    └── utils/        # 4 Sequencing Algorithms & Error Handlers
+ │    │    ├── services/     # AI Analysis, YouTube API, Session Store, Flow Engine Adapter
+ │    │    └── utils/        # 4 Sequencing Algorithms, Shared Metrics & Error Handlers
  │    └── scripts/
  │         ├── fixtures/     # Evaluation Datasets (MTG-Jamendo & Musav)
- │         └── evaluate*.ts  # Performance & Smoothness Evaluation Benchmark Scripts
+ │         ├── evaluate*.ts  # Performance & Smoothness Evaluation Benchmark Scripts
+ │         ├── verifyEngineContract.ts  # Engine ↔ frontend contract checks
+ │         └── smokeTest.ts             # Live HTTP checks (routing, auth, CORS)
  └── frontend/           # Next.js 16 (App Router), React, Tailwind CSS, & Framer Motion
       ├── src/
       │    ├── app/          # Web Pages (Home, Playlist Viewer, Dynamic Routes)
-      │    ├── components/   # UI Components (Energy Graph, Audio Player, Flow Sandbox)
+      │    ├── components/   # UI Components (Energy Chart, Flow Stats, Audio Player)
+      │    ├── services/     # Typed API client for the backend
+      │    ├── types/        # Shared flow-engine contract types
       │    └── utils/        # CSV Export & Audio Preview Utilities
 ```
+
+### API surface
+
+| Method | Endpoint | Purpose |
+| :--- | :--- | :--- |
+| `GET` | `/health` · `/ready` | Liveness / readiness (readiness also pings Postgres) |
+| `GET` | `/auth/login` · `/auth/callback` · `/auth/status` | Google OAuth round trip and session state |
+| `POST` | `/auth/logout` | Clears the session |
+| `GET` | `/api/me` · `/api/playlists` | Signed-in profile and playlists |
+| `GET` | `/api/playlists/:id/tracks` | Playlist in its original order |
+| `POST` | `/api/playlists/:id/rearrange` | **Any engine** — body `{ "mode": "bu" \| "df" \| "ph" \| "cm" }` |
+| `POST` | `/api/playlists/:id/{rise,drift,frame,unhinged}` | Named aliases for the same engines |
+| `GET` | `/api/playlists/:id/recommendations` | 4 AI-suggested continuations |
+| `POST` | `/api/playlists/export` | Creates the sequenced playlist on YouTube Music |
+
+Every engine responds with the same contract — `tracks`, `harshTracks`,
+`metrics` (smoothness, ΔE, jarring jumps, energy curve) and counts — so the UI
+never branches on which engine ran.
+
+**Deployment:** see [DEPLOYMENT.md](DEPLOYMENT.md) for hosting, environment
+variables, Docker, and the known operational limits.
 
 ---
 
@@ -196,6 +222,22 @@ npm run evaluate:all
 # Test engines on high-scale 1,000-track dataset
 npm run evaluate:jamendo
 ```
+
+### Integrity checks
+
+```bash
+cd backend
+npm run verify:engines   # every engine against the frontend contract
+npm run verify:api       # routing, auth gating, session isolation, CORS
+npm run verify           # both
+
+cd ../frontend
+npm run typecheck && npx eslint src --max-warnings=0 && npm run build
+```
+
+`verify:engines` asserts that all four engines preserve `videoId` (so exports
+work), never duplicate or invent tracks, keep their counts consistent, and
+report metrics on the same scale — across pool sizes from 1 to 80 tracks.
 
 ---
 
