@@ -5,14 +5,20 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "evaluate:drift": "ts-node scripts/evaluateSequencing.ts",
     "evaluate:frame": "ts-node scripts/evaluateFrameEngine.ts",
     "evaluate:jamendo": "ts-node scripts/evaluateMTGJamendo.ts",
     "evaluate:unhinged": "ts-node scripts/evaluateUnhingedEngine.ts",
     "evaluate:rise": "ts-node scripts/evaluateRiseEngine.ts",
-    "evaluate:all": "ts-node scripts/evaluateCombinedEngines.ts"
+    "evaluate:all": "ts-node scripts/evaluateCombinedEngines.ts",
+    "verify:engines": "ts-node --transpile-only scripts/verifyEngineContract.ts",
+    "postinstall": "prisma generate",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:push": "prisma db push",
+    "verify:api": "ts-node --transpile-only scripts/smokeTest.ts",
+    "verify": "npm run verify:engines && npm run verify:api"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",
@@ -31,5 +37,8 @@
     "prisma": "^5.22.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

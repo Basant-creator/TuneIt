@@ -46,23 +46,29 @@ export interface YouTubeTrack {
 }
 
 export class YtMusicService {
-  private static instance: YtMusicService;
   private oauth2Client: any;
   private hasTokens = false;
 
-  private constructor() {
+  /**
+   * One instance per browser session. Tokens live on the instance, never on the
+   * class, so concurrent visitors cannot read each other's YouTube account.
+   */
+  public constructor() {
     this.oauth2Client = new google.auth.OAuth2(
       googleConfig.clientId,
       googleConfig.clientSecret,
       googleConfig.redirectUri
     );
-  }
 
-  public static getInstance(): YtMusicService {
-    if (!YtMusicService.instance) {
-      YtMusicService.instance = new YtMusicService();
-    }
-    return YtMusicService.instance;
+    // Persist refreshed access tokens back onto this session's client.
+    this.oauth2Client.on('tokens', (tokens: any) => {
+      if (tokens?.refresh_token || tokens?.access_token) {
+        this.oauth2Client.setCredentials({
+          ...this.oauth2Client.credentials,
+          ...tokens,
+        });
+      }
+    });
   }
 
   /**
@@ -88,11 +94,12 @@ export class YtMusicService {
    * Generates the Google authorize URL with YouTube scopes.
    * offline access_type is required to get a refresh token!
    */
-  public getAuthUrl(): string {
+  public getAuthUrl(state?: string): string {
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: ['https://www.googleapis.com/auth/youtube'],
       prompt: 'consent', // Forces Google to show consent screen to ensure refresh token is returned
+      ...(state ? { state } : {}),
     });
   }
 

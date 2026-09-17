@@ -1,33 +1,31 @@
 import { Request, Response } from 'express';
-import { YtMusicService } from '../services/ytmusicService';
 import { getOrAnalyzeTracksBatch } from '../services/trackCacheService';
 import { isDeletedOrUnavailableTrack } from '../utils/trackUtils';
-import { generateDriftPlaylist, DriftTrack } from '../utils/driftAlgorithm';
-import { processFrameAlgorithm, Track as FrameTrack } from '../utils/frameAlgorithm';
-import { processUnhingedAlgorithm, Track as UnhingedTrack } from '../utils/unhingedAlgorithm';
+import {
+  runFlowEngine,
+  isFlowMode,
+  MODE_BY_SLUG,
+  SUPPORTED_MODES,
+  EnrichedTrack,
+  FlowMode,
+} from '../services/flowEngineService';
 import { handleControllerError } from '../utils/errorHandler';
 
 /**
- * Helper to fetch tracks from YouTube API, analyze/enrich via Gemini AI in batch, and cache in DB by Title + Artist.
+ * Fetches tracks from the YouTube API, enriches them via Gemini AI (batched,
+ * DB-cached by Title + Artist) and returns them in playlist order.
  */
-async function fetchAndEnrichTracks(playlistId: string) {
-  const ytmusicService = YtMusicService.getInstance();
+async function fetchAndEnrichTracks(req: Request, playlistId: string): Promise<EnrichedTrack[]> {
+  const ytmusicService = req.ytmusic!;
   const rawTracks = await ytmusicService.getPlaylistTracks(playlistId);
-  
-  if (rawTracks.length === 0) {
-    return { rawTracks: [], enrichedTracks: [] };
-  }
 
-  // Filter valid, non-deleted tracks
+  if (rawTracks.length === 0) return [];
+
   const validTracks = rawTracks.filter(
     (t) => t.videoId && !isDeletedOrUnavailableTrack(t.title, t.artist, t.videoId)
   );
+  if (validTracks.length === 0) return [];
 
-  if (validTracks.length === 0) {
-    return { rawTracks: [], enrichedTracks: [] };
-  }
-
-  // Batch analyze / fetch from cache
   const cachedResults = await getOrAnalyzeTracksBatch(
     validTracks.map((t) => ({
       title: t.title,
@@ -37,7 +35,7 @@ async function fetchAndEnrichTracks(playlistId: string) {
     }))
   );
 
-  const enrichedTracks = validTracks.map((track, idx) => {
+  return validTracks.map((track, idx) => {
     const cached = cachedResults[idx];
     return {
       videoId: track.videoId,
@@ -48,130 +46,75 @@ async function fetchAndEnrichTracks(playlistId: string) {
       originalIndex: track.originalIndex,
     };
   });
-
-  return { rawTracks: validTracks, enrichedTracks };
 }
 
 /**
- * Controller Endpoint for Mental Drift Engine (POST /api/playlists/:id/drift)
+ * Shared handler behind every rearrangement endpoint.
  */
-export const driftRearrange = async (req: Request, res: Response) => {
+async function handleRearrange(req: Request, res: Response, mode: FlowMode) {
   const { id } = req.params;
   if (!id) return res.status(400).json({ error: 'Playlist ID is required' });
 
   try {
-    const { rawTracks, enrichedTracks } = await fetchAndEnrichTracks(id);
-    if (rawTracks.length === 0) {
-      return res.status(404).json({ error: 'No tracks found in the playlist' });
+    const enriched = await fetchAndEnrichTracks(req, id);
+    if (enriched.length === 0) {
+      return res.status(404).json({ error: 'No playable tracks found in this playlist' });
     }
 
-    const driftTracks: DriftTrack[] = enrichedTracks.map(t => ({
-      videoId: t.videoId,
-      title: t.title,
-      artist: t.artist,
-      estimatedBpm: t.estimatedBpm,
-      intensityScore: t.intensityScore,
-      originalIndex: t.originalIndex,
-    }));
+    const startedAt = Date.now();
+    const result = runFlowEngine(mode, enriched);
+    const durationMs = Date.now() - startedAt;
 
-    console.log(`[DriftController] Running Drift Algorithm on ${driftTracks.length} tracks...`);
-    const { tracks: rearrangedPlaylist, harshTracks } = generateDriftPlaylist(driftTracks);
+    // An engine that filters out every track would render as a blank list.
+    // Say so explicitly instead.
+    if (result.acceptedCount === 0) {
+      return res.status(422).json({
+        error:
+          `The ${result.label} engine could not build a sequence from this playlist — ` +
+          'every track fell outside its vibe profile. Try a different flow mode.',
+        code: 'NO_TRACKS_RETAINED',
+        engine: result.engine,
+        mode,
+        originalCount: result.originalCount,
+        harshTracks: result.harshTracks,
+      });
+    }
 
-    res.json({
-      engine: 'DRIFT',
-      message: 'Playlist rearranged successfully with Mental Drift Engine',
-      originalCount: driftTracks.length,
-      acceptedCount: rearrangedPlaylist.length,
-      filteredCount: harshTracks.length,
-      tracks: rearrangedPlaylist,
-      harshTracks,
-    });
+    console.log(
+      `[EngineController] ${result.engine} sequenced ${result.acceptedCount}/${result.originalCount} ` +
+        `tracks in ${durationMs}ms (smoothness ${result.smoothnessScore})`
+    );
+
+    return res.json({ ...result, durationMs });
   } catch (err: any) {
-    handleControllerError(res, err, '[DriftController] Error during drift rearrangement');
+    return handleControllerError(res, err, `[EngineController] Error running ${mode} engine`);
   }
-};
+}
 
 /**
- * Controller Endpoint for Frame Engine (POST /api/playlists/:id/frame)
+ * Mode-agnostic endpoint: POST /api/playlists/:id/rearrange  body { mode }
+ * This is what the frontend uses; the per-engine routes below stay for
+ * backwards compatibility and direct API use.
  */
-export const frameRearrange = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  if (!id) return res.status(400).json({ error: 'Playlist ID is required' });
+export const rearrangePlaylist = async (req: Request, res: Response) => {
+  const mode = req.body?.mode ?? req.query?.mode;
 
-  try {
-    const { rawTracks, enrichedTracks } = await fetchAndEnrichTracks(id);
-    if (rawTracks.length === 0) {
-      return res.status(404).json({ error: 'No tracks found in the playlist' });
-    }
-
-    const frameTracks: FrameTrack[] = enrichedTracks.map(t => ({
-      id: t.videoId,
-      title: t.title,
-      artist: t.artist,
-      bpm: t.estimatedBpm,
-      intensity: t.intensityScore,
-      valence: 0.5,
-    }));
-
-    console.log(`[FrameController] Running Frame Algorithm on ${frameTracks.length} tracks...`);
-    const output = processFrameAlgorithm(frameTracks);
-
-    res.json({
-      engine: 'FRAME',
-      message: 'Playlist rearranged successfully with Frame Engine (3-Act Narrative)',
-      originalCount: frameTracks.length,
-      acceptedCount: output.acceptedTracks.length,
-      rejectedCount: output.rejectedTracks.length,
-      metrics: output.metrics,
-      smoothnessScore: output.smoothnessScore,
-      tracks: output.acceptedTracks,
-      rejectedTracks: output.rejectedTracks,
+  if (!isFlowMode(mode)) {
+    return res.status(400).json({
+      error: `Unknown flow mode "${mode}". Supported modes: ${SUPPORTED_MODES.join(', ')}.`,
+      supportedModes: SUPPORTED_MODES,
     });
-  } catch (err: any) {
-    handleControllerError(res, err, '[FrameController] Error during frame rearrangement');
   }
+
+  return handleRearrange(req, res, mode);
 };
 
-/**
- * Controller Endpoint for Unhinged Engine (POST /api/playlists/:id/unhinged)
- */
-export const unhingedRearrange = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  if (!id) return res.status(400).json({ error: 'Playlist ID is required' });
+/** Builds a handler for a named legacy route such as /drift or /rise. */
+function legacyHandler(slug: keyof typeof MODE_BY_SLUG) {
+  return (req: Request, res: Response) => handleRearrange(req, res, MODE_BY_SLUG[slug]);
+}
 
-  try {
-    const { rawTracks, enrichedTracks } = await fetchAndEnrichTracks(id);
-    if (rawTracks.length === 0) {
-      return res.status(404).json({ error: 'No tracks found in the playlist' });
-    }
-
-    const unhingedTracks: Partial<UnhingedTrack>[] = enrichedTracks.map(t => ({
-      id: t.videoId,
-      title: t.title,
-      artist: t.artist,
-      bpm: t.estimatedBpm,
-      arousal: t.intensityScore,
-      intensity: t.intensityScore,
-      valence: 0.5,
-    }));
-
-    console.log(`[UnhingedController] Running Unhinged Algorithm on ${unhingedTracks.length} tracks...`);
-    const output = processUnhingedAlgorithm(unhingedTracks);
-
-    res.json({
-      engine: 'UNHINGED',
-      message: 'Playlist rearranged successfully with Unhinged Engine (Subversive Whiplash)',
-      originalCount: unhingedTracks.length,
-      acceptedCount: output.sequencedTracks.length,
-      rejectedCount: output.rejectedTracks.length,
-      yieldRetention: output.yieldRetention,
-      smoothnessScore: output.smoothnessScore,
-      metrics: output.metrics,
-      anchorLogs: output.anchorLogs,
-      tracks: output.sequencedTracks,
-      rejectedTracks: output.rejectedTracks,
-    });
-  } catch (err: any) {
-    handleControllerError(res, err, '[UnhingedController] Error during unhinged rearrangement');
-  }
-};
+export const riseRearrange = legacyHandler('rise');
+export const driftRearrange = legacyHandler('drift');
+export const frameRearrange = legacyHandler('frame');
+export const unhingedRearrange = legacyHandler('unhinged');

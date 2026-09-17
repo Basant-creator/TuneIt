@@ -1,6 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
+import { googleConfig } from '../config/ytmusic';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Reads through googleConfig so dotenv is guaranteed to have run first,
+// regardless of module import order.
+const ai = new GoogleGenAI({ apiKey: googleConfig.geminiApiKey });
 
 const DRIFT_PROMPT = `You are a precise music analytics data daemon. Analyze the provided YouTube track title, channel name, and description tags. 
 Your goal is to estimate the BPM, evaluate a "Sonic Intensity" score, and write a 10 to 15 word concise vibe review of the track.

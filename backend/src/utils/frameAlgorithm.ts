@@ -195,6 +195,14 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
     };
   }
 
+  // --- Small-pool bypass ---
+  // Baseline, variance and skewness are meaningless on fewer than 5 samples, and
+  // the hard gates below were rejecting entire 2-3 track playlists. Order such a
+  // pool directly instead of filtering it away.
+  if (inputTracks.length < 5) {
+    return buildSmallPoolFrame(inputTracks);
+  }
+
   // --- Phase A: Pre-Calculation & Theme Extraction ---
   const initialIntensities = inputTracks.map(t => getTrackEnergy(t));
   const baselineIntensity = computeMean(initialIntensities);
@@ -313,8 +321,9 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
 
   // 1. Calculate Act Allocation Counts (Act I: 30%, Act II: 45%, Act III: 25%)
   const act1Count = Math.max(1, Math.round(totalAccepted * 0.30));
-  const act3Count = Math.max(1, Math.round(totalAccepted * 0.25));
-  const act2Count = Math.max(1, totalAccepted - act1Count - act3Count);
+  const act3Count = Math.max(1, Math.min(totalAccepted - act1Count, Math.round(totalAccepted * 0.25)));
+  // Act II takes whatever is left; it may legitimately be empty on tiny pools.
+  const act2Count = Math.max(0, totalAccepted - act1Count - act3Count);
 
   let pool = [...candidatePool];
 
@@ -351,6 +360,10 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
     // ACT II: Dynamic Arc (Climax Ramp to peak 1-2 tracks at ~60% mark)
     // Interleave non-climax tracks so rising and falling phases are evenly matched
     act2Pool.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+    if (act2Pool.length === 0) {
+      // Nothing left for the dynamic arc; Act I and Act III carry the sequence.
+      act2Pool = [];
+    } else {
     const climaxTrack = act2Pool[act2Pool.length - 1];
     const nonClimax = act2Pool.slice(0, act2Pool.length - 1);
 
@@ -370,12 +383,16 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
     fallingTracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
 
     act2Pool = [...risingTracks, climaxTrack, ...fallingTracks];
+    }
   } else {
     // TANK_AND_SPIKE (Ambient Valley Narrative Arc for Low-Energy Pools)
     act3Tracks = pool.slice(pool.length - act3Count);
     act2Pool = pool.slice(0, pool.length - act3Count);
 
     act2Pool.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+    if (act2Pool.length === 0) {
+      act2Pool = [];
+    } else {
     const valleyTrack = act2Pool[0];
     const nonValley = act2Pool.slice(1);
 
@@ -395,6 +412,7 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
     risingTracks.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
 
     act2Pool = [...fallingTracks, valleyTrack, ...risingTracks];
+    }
   }
 
   // 4. ACT III: Resolution (STRICT Monotonic Glideway or Escalation)
@@ -430,6 +448,54 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
       skewness: Number(skewness.toFixed(4)),
       variance: Number(variance.toFixed(4)),
       actDirection
+    },
+    smoothnessScore: smoothness.score
+  };
+}
+
+
+/**
+ * Orders a pool too small for statistical gating (< 5 tracks) into a 3-act shape
+ * without rejecting anything: rise to a peak, then resolve downward.
+ */
+function buildSmallPoolFrame(inputTracks: Track[]): FrameOutput {
+  const ordered = [...inputTracks].sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
+  const n = ordered.length;
+
+  // Peak in the middle-to-end, resolving down on the final track when possible.
+  if (n >= 3) {
+    const tail = ordered.pop()!;
+    ordered.splice(Math.max(1, ordered.length - 1), 0, tail);
+  }
+
+  const act1Count = n <= 2 ? 1 : Math.max(1, Math.round(n * 0.3));
+  const act3Count = n <= 2 ? n - act1Count : Math.max(1, Math.round(n * 0.25));
+
+  const acceptedTracks: AcceptedTrack[] = ordered.map((t, idx) => {
+    let act: ActType = 'ACT_II';
+    if (idx < act1Count) act = 'ACT_I';
+    else if (idx >= n - act3Count) act = 'ACT_III';
+    return { ...t, act };
+  });
+
+  const intensities = ordered.map(t => getTrackEnergy(t));
+  const mean = computeMean(intensities);
+  const variance = computeVariance(intensities, mean);
+  const smoothness = computeSmoothnessScore(acceptedTracks);
+
+  return {
+    acceptedTracks,
+    rejectedTracks: [],
+    metrics: {
+      baselineIntensity: Number(mean.toFixed(4)),
+      baselineArousal: Number(mean.toFixed(4)),
+      meanDeltaEnergy: smoothness.meanDelta,
+      maxDeltaEnergy: smoothness.maxDelta,
+      jarringJumps: smoothness.jarringJumps,
+      smoothnessScore: smoothness.score,
+      skewness: 0,
+      variance: Number(variance.toFixed(4)),
+      actDirection: 'SPIKE_AND_TANK'
     },
     smoothnessScore: smoothness.score
   };
