@@ -73,7 +73,7 @@ export function FlowModeCard({
       <p
         className={cn(
           'text-xs font-medium leading-relaxed font-mono flex-1',
-          selected ? 'opacity-90' : 'text-slate-700 dark:text-slate-800'
+          selected ? 'opacity-90' : 'text-slate-700'
         )}
       >
         {description}

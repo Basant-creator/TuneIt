@@ -2,52 +2,43 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Music2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, Music2 } from 'lucide-react';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { Header } from '@/components/Header';
 import { TrackImage } from '@/components/TrackImage';
-import { env } from '@/lib/env';
-
-interface UserProfile {
-  display_name?: string;
-  images?: Array<{ url: string }>;
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-  description?: string;
-  images?: Array<{ url: string }>;
-  tracks?: { total: number };
-}
+import { api, ApiError } from '@/services/api';
+import type { Playlist, UserProfile } from '@/types/flow';
 
 export default function PlaylistsPage() {
   const router = useRouter();
   const [loading, setLoading] = React.useState(true);
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
   const [playlists, setPlaylists] = React.useState<Playlist[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = React.useState(false);
 
   React.useEffect(() => {
     let isMounted = true;
 
     async function loadData() {
       try {
-        const meRes = await fetch(`${env.apiUrl}/api/me`);
-        if (!meRes.ok) throw new Error('Unauthenticated');
-        const profile = await meRes.json();
-        if (isMounted) setUserProfile(profile);
-
-        const playlistsRes = await fetch(`${env.apiUrl}/api/playlists`);
-        if (!playlistsRes.ok) throw new Error('Failed to fetch playlists');
-        const data = await playlistsRes.json();
-
-        if (isMounted && data?.items) {
-          setPlaylists(data.items);
-        }
+        // Profile and playlists are independent; fetch them together.
+        const [profile, items] = await Promise.all([api.getProfile(), api.getPlaylists()]);
+        if (!isMounted) return;
+        setUserProfile(profile);
+        setPlaylists(items);
       } catch (err) {
         console.error('[PlaylistsPage Error]', err);
-        if (isMounted) router.push('/');
+        if (!isMounted) return;
+        if (err instanceof ApiError && err.isAuthError) {
+          setNeedsAuth(true);
+          setError('Connect your YouTube Music account to see your playlists.');
+        } else {
+          setError(
+            err instanceof Error ? err.message : 'Something went wrong loading your playlists.'
+          );
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -91,6 +82,28 @@ export default function PlaylistsPage() {
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <Loader2 className="w-12 h-12 animate-spin text-brand-pink" />
             <p className="font-mono font-black uppercase text-sm">Loading your vibes...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-white neo-border border-black p-10 sm:p-12 rounded-3xl text-center flex flex-col items-center justify-center max-w-xl mx-auto">
+            <AlertCircle className="w-14 h-14 text-brand-orange mb-4" />
+            <h3 className="text-2xl font-black uppercase mb-2">
+              {needsAuth ? 'Not Connected' : 'Something Broke'}
+            </h3>
+            <p className="font-mono text-sm text-slate-600 mb-6 max-w-sm font-bold">{error}</p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {needsAuth ? (
+                <a href={api.loginUrl()}>
+                  <NeoButton color="yellow">Connect YouTube Music</NeoButton>
+                </a>
+              ) : (
+                <NeoButton color="yellow" onClick={() => window.location.reload()}>
+                  Try Again
+                </NeoButton>
+              )}
+              <NeoButton color="white" onClick={() => router.push('/')}>
+                Back to Home
+              </NeoButton>
+            </div>
           </div>
         ) : playlists.length === 0 ? (
           <div className="bg-white neo-border border-black p-12 rounded-3xl text-center flex flex-col items-center justify-center">

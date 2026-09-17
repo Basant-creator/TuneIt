@@ -22,31 +22,19 @@ import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { SpinningBlocks } from '@/components/SpinningBlocks';
 import { AudioPreviewModal } from '@/components/AudioPreviewModal';
+import { FlowStatsPanel } from '@/components/FlowStatsPanel';
+import { FlowEnergyChart } from '@/components/FlowEnergyChart';
 import { cn } from '@/utils/cn';
 import { flowModes } from '@/data/homeData';
-import { env } from '@/lib/env';
 import { decodeHtmlEntities } from '@/utils/decodeHtml';
 import { downloadPlaylistCSV } from '@/utils/csvExporter';
-
-interface Track {
-  videoId: string;
-  title: string;
-  artist: string;
-  estimatedBpm?: number;
-  intensityScore?: number;
-  vibeReview?: string;
-  originalIndex?: number;
-  displayIndex?: number;
-}
-
-interface RecommendedTrack {
-  videoId: string;
-  title: string;
-  artist: string;
-  estimatedBpm: number;
-  intensityScore: number;
-  vibeReview: string;
-}
+import { api, ApiError } from '@/services/api';
+import type {
+  FlowEngineResponse,
+  FlowMode,
+  FlowTrack as Track,
+  RecommendedTrack,
+} from '@/types/flow';
 
 export default function PlaylistModifierPage() {
   const router = useRouter();
@@ -58,10 +46,14 @@ export default function PlaylistModifierPage() {
   const [displayTracks, setDisplayTracks] = React.useState<Track[]>([]);
   const [harshTracks, setHarshTracks] = React.useState<Track[]>([]);
 
-  const [selectedMode, setSelectedMode] = React.useState('df'); // Default to drift
+  const [selectedMode, setSelectedMode] = React.useState<FlowMode>('bu');
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isComplete, setIsComplete] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = React.useState(false);
+
+  // Full engine response: metrics, segment labels and excluded tracks.
+  const [flowResult, setFlowResult] = React.useState<FlowEngineResponse | null>(null);
 
   // Active pill sequence tab ('chaotic' | 'optimized' | 'recommendations' | 'harsh')
   const [activeSequenceTab, setActiveSequenceTab] = React.useState<'chaotic' | 'optimized' | 'recommendations' | 'harsh'>('optimized');
@@ -69,6 +61,7 @@ export default function PlaylistModifierPage() {
   // Recommendations state
   const [recommendations, setRecommendations] = React.useState<RecommendedTrack[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = React.useState(false);
+  const [hasFetchedRecommendations, setHasFetchedRecommendations] = React.useState(false);
 
   // 15s Audio Preview Modal state
   const [previewTrack, setPreviewTrack] = React.useState<Track | null>(null);
@@ -87,14 +80,8 @@ export default function PlaylistModifierPage() {
 
     const fetchTracks = async () => {
       try {
-        const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/tracks`);
-        if (!res.ok) throw new Error('Failed to fetch playlist tracks');
-
-        const data = await res.json();
-        const rawTracks = (data.tracks || []).map((t: Track, i: number) => ({
-          ...t,
-          displayIndex: i + 1,
-        }));
+        const tracks = await api.getPlaylistTracks(playlistId);
+        const rawTracks = tracks.map((t, i) => ({ ...t, displayIndex: i + 1 }));
 
         if (isMounted) {
           setOriginalTracks(rawTracks);
@@ -102,7 +89,13 @@ export default function PlaylistModifierPage() {
         }
       } catch (err: unknown) {
         console.error(err);
-        if (isMounted && err instanceof Error) setError(err.message);
+        if (!isMounted) return;
+        if (err instanceof ApiError && err.isAuthError) {
+          setNeedsAuth(true);
+          setError('Your YouTube session expired. Reconnect to continue.');
+        } else if (err instanceof Error) {
+          setError(err.message);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -134,55 +127,58 @@ export default function PlaylistModifierPage() {
   }, [isGenerating, isComplete]);
 
   const handleApplyFlow = async () => {
-    if (selectedMode !== 'df') return;
-
     setIsGenerating(true);
     setError(null);
     setRecommendations([]);
 
     try {
-      const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/drift`, {
-        method: 'POST',
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to process playlist');
-      }
+      const result = await api.rearrange(playlistId, selectedMode);
 
       // Final ordered tracks get a fresh 1..N index
-      const finalTracks = (data.tracks || []).map((t: Track, i: number) => ({
-        ...t,
-        displayIndex: i + 1,
-      }));
+      const finalTracks = result.tracks.map((t, i) => ({ ...t, displayIndex: i + 1 }));
+      setFlowResult(result);
       setDisplayTracks(finalTracks);
-      setHarshTracks(data.harshTracks || []);
+      setHarshTracks(result.harshTracks ?? []);
       setIsComplete(true);
+      setActiveSequenceTab('optimized');
 
-      // Fetch related recommendations after optimization
-      fetchRecommendations();
+      // Recommendations are fetched lazily when the tab is opened — each run
+      // costs 4 YouTube search calls (~400 quota units).
     } catch (err: unknown) {
       console.error(err);
-      if (err instanceof Error) setError(err.message);
+      if (err instanceof ApiError) {
+        setNeedsAuth(err.isAuthError);
+        setError(err.message);
+        // A 422 still tells us which tracks the engine rejected and why.
+        if (err.code === 'NO_TRACKS_RETAINED') {
+          setHarshTracks((err.payload?.harshTracks as Track[]) ?? []);
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      }
       setDisplayTracks(originalTracks); // Revert to original on error
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = React.useCallback(async () => {
     setIsLoadingRecommendations(true);
     try {
-      const res = await fetch(`${env.apiUrl}/api/playlists/${playlistId}/recommendations`);
-      if (res.ok) {
-        const data = await res.json();
-        setRecommendations(data.recommendations || []);
-      }
+      setRecommendations(await api.getRecommendations(playlistId));
     } catch (err) {
       console.error('Failed to fetch recommendations:', err);
     } finally {
       setIsLoadingRecommendations(false);
+      setHasFetchedRecommendations(true);
+    }
+  }, [playlistId]);
+
+  /** Opens the recommendations tab, fetching the list on first view. */
+  const handleOpenRecommendations = () => {
+    setActiveSequenceTab('recommendations');
+    if (!hasFetchedRecommendations && !isLoadingRecommendations) {
+      fetchRecommendations();
     }
   };
 
@@ -227,23 +223,16 @@ export default function PlaylistModifierPage() {
     setExportError(null);
 
     try {
-      const videoIds = displayTracks.map((t) => t.videoId);
-      const res = await fetch(`${env.apiUrl}/api/playlists/export`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: exportTitle.trim(),
-          videoIds,
-          description: `Optimized playlist flow (${displayTracks.length} tracks) created with TuneIt.`,
-        }),
+      const engineName = flowModes.find((m) => m.id === selectedMode)?.title ?? 'Optimized';
+      const data = await api.exportPlaylist({
+        title: exportTitle.trim(),
+        videoIds: displayTracks.map((t) => t.videoId),
+        description: `${engineName} flow — ${displayTracks.length} tracks sequenced with TuneIt.`,
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to export playlist');
-      }
-
-      setExportedPlaylistUrl(data.playlist?.url || `https://music.youtube.com/playlist?list=${data.playlist?.id}`);
+      setExportedPlaylistUrl(
+        data.playlist?.url || `https://music.youtube.com/playlist?list=${data.playlist?.id}`
+      );
     } catch (err: unknown) {
       console.error('[Export Error]', err);
       if (err instanceof Error) setExportError(err.message);
@@ -329,7 +318,7 @@ export default function PlaylistModifierPage() {
 
                 <button
                   type="button"
-                  onClick={() => setActiveSequenceTab('recommendations')}
+                  onClick={handleOpenRecommendations}
                   className={cn(
                     'flex-1 min-w-[170px] px-4 py-2.5 rounded-full font-black uppercase text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shrink-0',
                     activeSequenceTab === 'recommendations'
@@ -400,7 +389,7 @@ export default function PlaylistModifierPage() {
                         <button
                           key={mode.id}
                           disabled={isDisabled}
-                          onClick={() => setSelectedMode(mode.id)}
+                          onClick={() => setSelectedMode(mode.id as FlowMode)}
                           className={cn(
                             'text-left p-3 rounded-2xl border-2 border-black transition-all relative overflow-hidden flex flex-col',
                             isSelected
@@ -411,6 +400,9 @@ export default function PlaylistModifierPage() {
                         >
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-black uppercase text-sm">{mode.title}</h3>
+                            {isSelected && (
+                              <span className="ml-auto w-2 h-2 rounded-full bg-brand-yellow shrink-0" />
+                            )}
                           </div>
                           <p
                             className={cn(
@@ -428,16 +420,28 @@ export default function PlaylistModifierPage() {
                   {/* Action Area */}
                   {!isComplete ? (
                     <div className="space-y-4">
-                      {selectedMode !== 'df' && (
-                        <p className="font-mono text-[10px] font-black text-brand-orange bg-orange-50 border border-brand-orange p-2 rounded-lg text-center uppercase">
-                          This mode engine is currently offline. Select Drift to continue.
-                        </p>
+                      <p className="font-mono text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 p-2.5 rounded-lg leading-relaxed">
+                        {flowModes.find((m) => m.id === selectedMode)?.description}
+                      </p>
+
+                      {error && (
+                        <div className="font-mono text-[10px] font-black text-red-600 bg-red-50 border-2 border-red-400 p-2.5 rounded-lg space-y-2">
+                          <p className="uppercase leading-relaxed">{error}</p>
+                          {needsAuth && (
+                            <a
+                              href={api.loginUrl()}
+                              className="block bg-brand-yellow border-2 border-black rounded-lg py-1.5 text-center text-black uppercase"
+                            >
+                              Reconnect YouTube Music
+                            </a>
+                          )}
+                        </div>
                       )}
 
                       <NeoButton
                         color="yellow"
                         className="w-full justify-center h-14"
-                        disabled={selectedMode !== 'df' || isGenerating}
+                        disabled={isGenerating || originalTracks.length === 0}
                         onClick={handleApplyFlow}
                       >
                         {isGenerating ? (
@@ -500,6 +504,10 @@ export default function PlaylistModifierPage() {
                           setDisplayTracks(originalTracks);
                           setHarshTracks([]);
                           setRecommendations([]);
+                          setHasFetchedRecommendations(false);
+                          setFlowResult(null);
+                          setError(null);
+                          setActiveSequenceTab('optimized');
                         }}
                       >
                         Reset and Try Again
@@ -511,6 +519,18 @@ export default function PlaylistModifierPage() {
 
               {/* RIGHT COLUMN: Active Tab Content ONLY */}
               <div className="lg:col-span-7 space-y-6">
+                {/* Engine metrics + the real energy curve for this sequence */}
+                {isComplete && flowResult && activeSequenceTab === 'optimized' && (
+                  <>
+                    <FlowStatsPanel result={flowResult} />
+                    <FlowEnergyChart
+                      optimized={displayTracks}
+                      original={originalTracks}
+                      engineLabel={flowResult.label}
+                    />
+                  </>
+                )}
+
                 {/* Main Track List Container (Visible ONLY when chaotic or optimized tab is active, or before completion) */}
                 {(activeSequenceTab === 'optimized' || activeSequenceTab === 'chaotic' || !isComplete) && (
                   <div className="bg-white neo-border border-black rounded-3xl p-6 overflow-hidden">
@@ -596,7 +616,14 @@ export default function PlaylistModifierPage() {
 
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-black text-sm truncate" title={decodeHtmlEntities(track.title)}>{decodeHtmlEntities(track.title)}</h4>
-                                  <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{decodeHtmlEntities(track.artist)}</p>
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{decodeHtmlEntities(track.artist)}</p>
+                                    {activeSequenceTab === 'optimized' && track.segment && (
+                                      <span className="font-mono text-[8px] font-black uppercase bg-slate-900 text-white px-1.5 py-0.5 rounded shrink-0 tracking-wide">
+                                        {track.segment.replace(/_/g, ' ')}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
@@ -667,8 +694,11 @@ export default function PlaylistModifierPage() {
                         Analyzing vibe continuation...
                       </div>
                     ) : recommendations.length === 0 ? (
-                      <div className="text-center py-6 font-mono text-xs text-slate-500 font-bold">
-                        No additional recommendations found.
+                      <div className="text-center py-6 font-mono text-xs text-slate-500 font-bold space-y-3">
+                        <p>No additional recommendations found.</p>
+                        <NeoButton color="white" size="sm" onClick={fetchRecommendations}>
+                          Try Again
+                        </NeoButton>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -731,7 +761,9 @@ export default function PlaylistModifierPage() {
                       <div className="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center">
                         <AlertCircle className="w-5 h-5" />
                       </div>
-                      <h2 className="text-lg font-black uppercase text-red-700">4. Excluded (Harsh Vibe Check)</h2>
+                      <h2 className="text-lg font-black uppercase text-red-700">
+                        4. Excluded by {flowResult?.label ?? 'the engine'}
+                      </h2>
                     </div>
 
                     {harshTracks.length === 0 ? (
@@ -747,11 +779,16 @@ export default function PlaylistModifierPage() {
                         <div data-lenis-prevent="true" className="max-h-[30vh] overflow-y-auto pr-2 overscroll-contain">
                           <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {harshTracks.map((track) => (
-                              <li key={track.videoId} className="bg-white border-2 border-red-500 p-2 rounded-xl flex items-center gap-3">
-                                <div className="flex-1 min-w-0">
+                              <li key={track.videoId} className="bg-white border-2 border-red-500 p-2.5 rounded-xl flex flex-col gap-1">
+                                <div className="min-w-0">
                                   <h4 className="font-black text-[11px] truncate">{decodeHtmlEntities(track.title)}</h4>
                                   <p className="font-mono text-[9px] text-slate-500 truncate">{decodeHtmlEntities(track.artist)}</p>
                                 </div>
+                                {track.reason && (
+                                  <p className="font-mono text-[9px] text-red-700 bg-red-50 border border-red-200 rounded-md px-1.5 py-1 leading-snug">
+                                    {track.reason}
+                                  </p>
+                                )}
                               </li>
                             ))}
                           </ul>

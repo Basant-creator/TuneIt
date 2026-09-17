@@ -6,24 +6,38 @@ import { TextLogo } from '@/components/TextLogo';
 import { NeoButton } from '@/components/NeoButton';
 import { TrackImage } from '@/components/TrackImage';
 import { cn } from '@/utils/cn';
-import { env } from '@/lib/env';
-
-interface UserProfile {
-  display_name?: string;
-  images?: Array<{ url: string }>;
-}
+import { api } from '@/services/api';
+import type { UserProfile } from '@/types/flow';
 
 interface HeaderProps {
   userProfile?: UserProfile | null;
   showNavLinks?: boolean;
+  /**
+   * When true the header checks the session itself, so it can show
+   * "My Playlists" to a returning visitor instead of asking them to reconnect.
+   */
+  detectSession?: boolean;
 }
 
 export function Header({
   userProfile,
   showNavLinks = true,
+  detectSession = false,
 }: HeaderProps) {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = React.useState(false);
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!detectSession || userProfile) return;
+    let active = true;
+    api.authStatus().then(({ authenticated }) => {
+      if (active) setIsAuthenticated(authenticated);
+    });
+    return () => {
+      active = false;
+    };
+  }, [detectSession, userProfile]);
 
   React.useEffect(() => {
     let ticking = false;
@@ -99,8 +113,17 @@ export function Header({
                 {userProfile.display_name || 'YouTube Music'}
               </span>
             </div>
+          ) : isAuthenticated ? (
+            <NeoButton
+              color="yellow"
+              size="sm"
+              className="hidden sm:inline-flex rounded-full"
+              onClick={() => router.push('/playlists')}
+            >
+              My Playlists
+            </NeoButton>
           ) : (
-            <a href={`${env.apiUrl}/auth/login`}>
+            <a href={api.loginUrl()}>
               <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex rounded-full">
                 Connect YouTube Music
               </NeoButton>

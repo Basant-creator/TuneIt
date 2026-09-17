@@ -16,12 +16,16 @@ import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
 import { FlowSandbox } from '@/components/FlowSandbox';
 import { Header } from '@/components/Header';
-import { env } from '@/lib/env';
+import { api } from '@/services/api';
+import type { UserProfile } from '@/types/flow';
 
-interface UserProfile {
-  display_name?: string;
-  images?: Array<{ url: string }>;
-}
+/** Human-readable copy for the `?auth_error=` codes the backend redirects with. */
+const AUTH_ERROR_COPY: Record<string, string> = {
+  access_denied: 'You declined the YouTube permission request. Nothing was connected.',
+  session_expired: 'That sign-in link expired. Please connect again.',
+  token_exchange_failed: 'Google rejected the sign-in. Please try connecting again.',
+  missing_code: 'Google did not return an authorization code. Please try again.',
+};
 
 export default function Home() {
   const router = useRouter();
@@ -35,20 +39,29 @@ export default function Home() {
   });
 
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const [authError, setAuthError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let isMounted = true;
-    fetch(`${env.apiUrl}/api/me`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Unauthenticated');
-        return res.json();
-      })
+
+    // Surface a failed OAuth round trip instead of silently landing on the
+    // marketing page as though nothing happened. Reading `window.location` is a
+    // genuine external-system subscription, and it cannot move into a lazy
+    // useState initializer without desyncing from the prerendered HTML.
+    const code = new URLSearchParams(window.location.search).get('auth_error');
+    if (code) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthError(AUTH_ERROR_COPY[code] ?? 'Could not connect to YouTube Music. Please try again.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    api
+      .getProfile()
       .then((profile) => {
-        console.log('[TuneIt Backend] Connected! Profile:', profile);
         if (isMounted) setUserProfile(profile);
       })
-      .catch((err) => {
-        console.log('[TuneIt Backend] No active session or connection failed:', err?.message || err);
+      .catch(() => {
+        // No session yet is the normal first-visit state, not an error.
       });
 
     return () => {
@@ -78,7 +91,7 @@ export default function Home() {
     if (userProfile) {
       router.push('/playlists');
     } else {
-      window.location.href = `${env.apiUrl}/auth/login`;
+      window.location.href = api.loginUrl();
     }
   };
 
@@ -90,7 +103,30 @@ export default function Home() {
     <div className="min-h-screen bg-[#F8FFE5] text-black relative pb-16">
 
       {/* 1. ANIMATED STYLISH NAVBAR */}
-      <Header userProfile={userProfile} />
+      <Header userProfile={userProfile} detectSession />
+
+      {/* Failed sign-in banner */}
+      <AnimatePresence>
+        {authError && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="max-w-3xl mx-auto mt-4 px-6"
+          >
+            <div className="bg-red-50 neo-border-sm border-red-500 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <span className="font-mono text-xs font-black text-red-700 flex-1">{authError}</span>
+              <button
+                type="button"
+                onClick={() => setAuthError(null)}
+                className="font-mono text-[10px] font-black uppercase text-red-500 hover:text-red-800 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 2. HERO SECTION */}
       <section className="relative py-16 px-6 md:px-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

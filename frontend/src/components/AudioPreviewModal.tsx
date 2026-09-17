@@ -22,6 +22,13 @@ interface AudioPreviewModalProps {
   onClose: () => void;
 }
 
+/** Plain-language band for an intensity score, matching the Gemini prompt's scale. */
+function describeIntensity(score: number): string {
+  if (score <= 0.3) return 'ambient / low-key';
+  if (score <= 0.6) return 'mid-energy groove';
+  return 'high-intensity';
+}
+
 export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalProps) {
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [timeLeft, setTimeLeft] = React.useState(15);
@@ -105,6 +112,11 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
   }, [isOpen, isPlaying, timeLeft]);
 
   if (!isOpen || !track) return null;
+
+  const hasAnalysis =
+    typeof track.estimatedBpm === 'number' || typeof track.intensityScore === 'number';
+  const intensityLabel =
+    typeof track.intensityScore === 'number' ? describeIntensity(track.intensityScore) : '';
 
   const decodedTitle = decodeHtmlEntities(track.title);
   const decodedArtist = decodeHtmlEntities(track.artist);
@@ -237,17 +249,39 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
             )}
           </div>
 
-          {/* AI 10-15 Word Mini Song Review Box */}
+          {/* AI review when one exists, otherwise the measured analysis values */}
           <div className="bg-[#FFFDF0] neo-border border-black p-3 rounded-2xl mb-4 relative">
             <div className="flex items-center gap-1.5 mb-1 text-brand-orange">
               <Sparkles className="w-3.5 h-3.5 fill-current" />
               <span className="text-[9.5px] font-black uppercase tracking-wider font-mono">
-                AI 15-Word Song Review
+                {track.vibeReview ? 'AI Song Review' : 'Track Analysis'}
               </span>
             </div>
-            <p className="font-bold text-xs leading-relaxed text-slate-800 font-mono">
-              &quot;{track.vibeReview || 'Smooth harmonic flow, vibrant synth pads, and a driving 122 BPM rhythmic progression.'}&quot;
-            </p>
+            {track.vibeReview ? (
+              <p className="font-bold text-xs leading-relaxed text-slate-800 font-mono">
+                &quot;{decodeHtmlEntities(track.vibeReview)}&quot;
+              </p>
+            ) : hasAnalysis ? (
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] font-black text-slate-800">
+                {typeof track.estimatedBpm === 'number' && (
+                  <span className="bg-white border border-black rounded-md px-2 py-0.5">
+                    {Math.round(track.estimatedBpm)} BPM
+                  </span>
+                )}
+                {typeof track.intensityScore === 'number' && (
+                  <>
+                    <span className="bg-white border border-black rounded-md px-2 py-0.5">
+                      Intensity {track.intensityScore.toFixed(2)}
+                    </span>
+                    <span className="text-slate-500 font-bold">{intensityLabel}</span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <p className="font-bold text-xs leading-relaxed text-slate-500 font-mono">
+                No analysis available for this track yet.
+              </p>
+            )}
           </div>
 
           {/* 15-Second Progress Bar */}
