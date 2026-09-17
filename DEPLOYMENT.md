@@ -153,6 +153,7 @@ npm run verify           # both
 cd ../frontend
 npm run typecheck
 npx eslint src --max-warnings=0
+npm test                 # 62 unit + component tests (vitest + testing-library)
 npm run build
 ```
 
@@ -188,5 +189,11 @@ These are real constraints of the current build, not TODOs hidden in code.
 6. **First analysis of a large playlist is slow** — a cold 100-track playlist is
    several Gemini round trips. Results are cached in Postgres by
    `artist:::title`, so repeat runs are fast.
-7. **No automated frontend tests.** Typecheck, lint and build are enforced; there
-   is no component or end-to-end suite.
+7. **Frontend tests cover units and components, not journeys.** `npm test` runs
+   62 vitest/testing-library tests over the API client, CSV export, the stats
+   panel, the preview modal and the track list. There is no end-to-end suite, so
+   the signed-in OAuth journey is still only verified by hand.
+8. **Long playlists render windowed.** Above 60 tracks the list switches to
+   virtualized rows and drops the per-row reorder animation
+   (`frontend/src/components/TrackList.tsx`). Row height is fixed at 68px; a
+   future variable-height row would need `measureElement`.

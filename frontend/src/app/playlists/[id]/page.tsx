@@ -24,6 +24,7 @@ import { SpinningBlocks } from '@/components/SpinningBlocks';
 import { AudioPreviewModal } from '@/components/AudioPreviewModal';
 import { FlowStatsPanel } from '@/components/FlowStatsPanel';
 import { FlowEnergyChart } from '@/components/FlowEnergyChart';
+import { TrackList } from '@/components/TrackList';
 import { cn } from '@/utils/cn';
 import { flowModes } from '@/data/homeData';
 import { decodeHtmlEntities } from '@/utils/decodeHtml';
@@ -584,77 +585,16 @@ export default function PlaylistModifierPage() {
                       )}
 
                       <div
-                        data-lenis-prevent="true"
                         className={cn(
-                          'transition-all duration-1000 max-h-[60vh] overflow-y-auto pr-2 overscroll-contain',
-                          isGenerating && 'blur-[6px] opacity-40 grayscale-[30%] pointer-events-none overflow-hidden'
+                          'transition-all duration-1000',
+                          isGenerating && 'blur-[6px] opacity-40 grayscale-[30%] pointer-events-none'
                         )}
                       >
-                        <ul className="space-y-2 flex flex-col relative">
-                          <AnimatePresence>
-                            {(activeSequenceTab === 'chaotic' ? originalTracks : displayTracks).map((track, idx) => (
-                              <motion.li
-                                layout
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{
-                                  type: 'spring',
-                                  stiffness: 280,
-                                  damping: 24,
-                                  mass: 0.6,
-                                }}
-                                key={track.videoId + (activeSequenceTab === 'chaotic' ? '_chaotic' : '_opt')}
-                                className="flex items-center gap-3 bg-slate-50 border-2 border-black rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow relative bg-white gpu-layer"
-                              >
-                                <div className={cn(
-                                  'w-8 h-8 rounded-full neo-border border-black flex items-center justify-center font-black shrink-0 text-sm',
-                                  activeSequenceTab === 'chaotic' ? 'bg-brand-orange text-white' : 'bg-brand-yellow text-black'
-                                )}>
-                                  {track.displayIndex || idx + 1}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-black text-sm truncate" title={decodeHtmlEntities(track.title)}>{decodeHtmlEntities(track.title)}</h4>
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <p className="font-mono text-[10px] text-slate-500 truncate font-bold">{decodeHtmlEntities(track.artist)}</p>
-                                    {activeSequenceTab === 'optimized' && track.segment && (
-                                      <span className="font-mono text-[8px] font-black uppercase bg-slate-900 text-white px-1.5 py-0.5 rounded shrink-0 tracking-wide">
-                                        {track.segment.replace(/_/g, ' ')}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  {track.estimatedBpm && (
-                                    <div className="flex gap-2 text-right hidden sm:flex">
-                                      <div className="flex flex-col">
-                                        <span className="font-mono text-[9px] uppercase font-black text-slate-400">BPM</span>
-                                        <span className="font-black text-xs">{Math.round(track.estimatedBpm)}</span>
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="font-mono text-[9px] uppercase font-black text-slate-400">NRG</span>
-                                        <span className="font-black text-xs text-brand-pink">{track.intensityScore?.toFixed(2)}</span>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* 15s Snippet Preview Trigger Button */}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenPreview(track)}
-                                    title="Listen to 15s Snippet & AI Review"
-                                    className="bg-brand-pink text-white neo-border-xs px-2 py-1 rounded-lg text-[10px] font-black uppercase font-mono hover:scale-105 transition-transform flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Volume2 className="w-3.5 h-3.5" />
-                                    <span className="hidden md:inline">15s Snippet</span>
-                                  </button>
-                                </div>
-                              </motion.li>
-                            ))}
-                          </AnimatePresence>
-                        </ul>
+                        <TrackList
+                          tracks={activeSequenceTab === 'chaotic' ? originalTracks : displayTracks}
+                          variant={activeSequenceTab === 'chaotic' ? 'chaotic' : 'optimized'}
+                          onPreview={handleOpenPreview}
+                        />
                       </div>
                     </div>
                   </div>

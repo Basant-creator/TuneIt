@@ -232,6 +232,7 @@ npm run verify:api       # routing, auth gating, session isolation, CORS
 npm run verify           # both
 
 cd ../frontend
+npm test                 # 62 unit + component tests
 npm run typecheck && npx eslint src --max-warnings=0 && npm run build
 ```
 
