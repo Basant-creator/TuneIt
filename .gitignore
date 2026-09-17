@@ -14,11 +14,13 @@ node_modules/
 /coverage
 
 # next.js
-/.next/
+.next/
 /out/
 
-# production
+# build output
 /build
+backend/dist/
+dist/
 
 # misc
 .DS_Store
@@ -30,8 +32,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — never commit real credentials
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
