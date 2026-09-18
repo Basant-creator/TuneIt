@@ -16,6 +16,7 @@ import {
   Plus,
   Volume2,
   Download,
+  GripVertical,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NeoButton } from '@/components/NeoButton';
@@ -55,6 +56,9 @@ export default function PlaylistModifierPage() {
 
   // Full engine response: metrics, segment labels and excluded tracks.
   const [flowResult, setFlowResult] = React.useState<FlowEngineResponse | null>(null);
+  // True once the user has dragged or nudged a track, so the UI can offer a
+  // revert and stop implying the order is purely the engine's.
+  const [isManuallyReordered, setIsManuallyReordered] = React.useState(false);
 
   // Active pill sequence tab ('chaotic' | 'optimized' | 'recommendations' | 'harsh')
   const [activeSequenceTab, setActiveSequenceTab] = React.useState<'chaotic' | 'optimized' | 'recommendations' | 'harsh'>('optimized');
@@ -139,6 +143,7 @@ export default function PlaylistModifierPage() {
       const finalTracks = result.tracks.map((t, i) => ({ ...t, displayIndex: i + 1 }));
       setFlowResult(result);
       setDisplayTracks(finalTracks);
+      setIsManuallyReordered(false);
       setHarshTracks(result.harshTracks ?? []);
       setIsComplete(true);
       setActiveSequenceTab('optimized');
@@ -204,6 +209,19 @@ export default function PlaylistModifierPage() {
     // Remove added track from recommendation pool
     setRecommendations((prev) => prev.filter((r) => r.videoId !== recTrack.videoId));
   };
+
+  /** Applies a manual reorder and renumbers the visible positions. */
+  const handleReorder = React.useCallback((reordered: Track[]) => {
+    setDisplayTracks(reordered.map((t, i) => ({ ...t, displayIndex: i + 1 })));
+    setIsManuallyReordered(true);
+  }, []);
+
+  /** Restores the engine's ordering, discarding manual edits. */
+  const handleRevertToEngineOrder = React.useCallback(() => {
+    if (!flowResult) return;
+    setDisplayTracks(flowResult.tracks.map((t, i) => ({ ...t, displayIndex: i + 1 })));
+    setIsManuallyReordered(false);
+  }, [flowResult]);
 
   const handleOpenPreview = (track: Track) => {
     setPreviewTrack(track);
@@ -507,6 +525,7 @@ export default function PlaylistModifierPage() {
                           setRecommendations([]);
                           setHasFetchedRecommendations(false);
                           setFlowResult(null);
+                          setIsManuallyReordered(false);
                           setError(null);
                           setActiveSequenceTab('optimized');
                         }}
@@ -574,6 +593,27 @@ export default function PlaylistModifierPage() {
                       </div>
                     </div>
 
+                    {/* Manual reordering hint + revert */}
+                    {isComplete && activeSequenceTab !== 'chaotic' && (
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl px-3 py-2">
+                        <p className="font-mono text-[10px] font-bold text-slate-600 flex items-center gap-1.5">
+                          <GripVertical className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          {isManuallyReordered
+                            ? 'You have edited this order by hand.'
+                            : 'Drag a track by its handle, or use the arrows, to fine-tune the order.'}
+                        </p>
+                        {isManuallyReordered && (
+                          <button
+                            type="button"
+                            onClick={handleRevertToEngineOrder}
+                            className="font-mono text-[10px] font-black uppercase bg-white border-2 border-black rounded-lg px-2.5 py-1 hover:bg-brand-yellow transition-colors cursor-pointer shrink-0"
+                          >
+                            Revert to {flowResult?.label ?? 'engine'} order
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     <div className="relative">
                       {isGenerating && (
                         <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
@@ -594,6 +634,11 @@ export default function PlaylistModifierPage() {
                           tracks={activeSequenceTab === 'chaotic' ? originalTracks : displayTracks}
                           variant={activeSequenceTab === 'chaotic' ? 'chaotic' : 'optimized'}
                           onPreview={handleOpenPreview}
+                          onReorder={
+                            isComplete && activeSequenceTab !== 'chaotic' && !isGenerating
+                              ? handleReorder
+                              : undefined
+                          }
                         />
                       </div>
                     </div>

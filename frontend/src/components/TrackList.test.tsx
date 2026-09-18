@@ -153,3 +153,91 @@ describe('TrackRow content', () => {
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
   });
 });
+
+describe('manual reordering', () => {
+  it('shows no drag affordance when reordering is disabled', () => {
+    render(<TrackList tracks={buildTracks(4)} variant="optimized" onPreview={() => {}} />);
+    expect(screen.queryByLabelText(/^Reorder /)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Move .* up/)).not.toBeInTheDocument();
+  });
+
+  it('exposes a drag handle per track when reordering is enabled', () => {
+    render(
+      <TrackList tracks={buildTracks(4)} variant="optimized" onPreview={() => {}} onReorder={() => {}} />
+    );
+    expect(screen.getAllByLabelText(/^Reorder /)).toHaveLength(4);
+  });
+
+  it('moves a track down and hands back the new order', async () => {
+    const onReorder = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TrackList tracks={buildTracks(4)} variant="optimized" onPreview={() => {}} onReorder={onReorder} />
+    );
+
+    await user.click(screen.getByLabelText('Move Track 1 down'));
+
+    expect(onReorder).toHaveBeenCalledOnce();
+    const order = onReorder.mock.calls[0][0].map((t: FlowTrack) => t.videoId);
+    expect(order).toEqual(['vid_1', 'vid_0', 'vid_2', 'vid_3']);
+  });
+
+  it('moves a track up', async () => {
+    const onReorder = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TrackList tracks={buildTracks(4)} variant="optimized" onPreview={() => {}} onReorder={onReorder} />
+    );
+
+    await user.click(screen.getByLabelText('Move Track 3 up'));
+
+    const order = onReorder.mock.calls[0][0].map((t: FlowTrack) => t.videoId);
+    expect(order).toEqual(['vid_0', 'vid_2', 'vid_1', 'vid_3']);
+  });
+
+  it('cannot move the first track up or the last track down', () => {
+    render(
+      <TrackList tracks={buildTracks(3)} variant="optimized" onPreview={() => {}} onReorder={() => {}} />
+    );
+    expect(screen.getByLabelText('Move Track 1 up')).toBeDisabled();
+    expect(screen.getByLabelText('Move Track 3 down')).toBeDisabled();
+    expect(screen.getByLabelText('Move Track 1 down')).toBeEnabled();
+  });
+
+  it('never loses or duplicates a track when reordering', async () => {
+    const onReorder = vi.fn();
+    const user = userEvent.setup();
+    const tracks = buildTracks(6);
+    render(
+      <TrackList tracks={tracks} variant="optimized" onPreview={() => {}} onReorder={onReorder} />
+    );
+
+    await user.click(screen.getByLabelText('Move Track 4 up'));
+
+    const result: FlowTrack[] = onReorder.mock.calls[0][0];
+    expect(result).toHaveLength(tracks.length);
+    expect(new Set(result.map((t) => t.videoId)).size).toBe(tracks.length);
+  });
+
+  it('keeps reordering available on a virtualized list', () => {
+    render(
+      <TrackList tracks={buildTracks(200)} variant="optimized" onPreview={() => {}} onReorder={() => {}} />
+    );
+    expect(screen.getByTestId('track-list-virtual')).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/^Reorder /).length).toBeGreaterThan(0);
+  });
+
+  it('still previews rather than dragging when the snippet button is clicked', async () => {
+    const onPreview = vi.fn();
+    const onReorder = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TrackList tracks={buildTracks(3)} variant="optimized" onPreview={onPreview} onReorder={onReorder} />
+    );
+
+    await user.click(screen.getAllByTitle(/15s Snippet/i)[0]);
+
+    expect(onPreview).toHaveBeenCalledOnce();
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+});
