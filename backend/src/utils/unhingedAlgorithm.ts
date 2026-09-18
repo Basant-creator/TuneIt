@@ -20,7 +20,8 @@ export interface Track {
   intensity?: number; // Alias for arousal
   valence: number;
   genre: string;
-  key: string; // Camelot notation, e.g., '8A'
+  /** Camelot key, absent when the analyser could not determine one. */
+  key?: string; // Camelot notation, e.g., '8A'
   subBassDensity: number; // Sub-bass energy density (0.0 to 1.0)
 }
 
@@ -76,18 +77,22 @@ export function normalizeTrack(raw: any, index: number = 0): Track {
   const title = raw.title ?? 'Unknown Title';
   const artist = raw.artist ?? 'Unknown Artist';
   const bpm = typeof raw.bpm === 'number' && !isNaN(raw.bpm) ? raw.bpm : 120;
-  
+
   const energyVal = raw.arousal ?? raw.intensity ?? raw.energy;
   const arousal = typeof energyVal === 'number' && !isNaN(energyVal) ? Math.max(0, Math.min(1, energyVal)) : 0.5;
-  
+
+  // Valence defaults to neutral when the analyser could not determine it. The
+  // curveball logic below weighs valence distance, so a playlist with no
+  // valence data simply falls back to energy-only contrast rather than
+  // pretending every track is equally neutral-by-measurement.
   const valenceVal = raw.valence;
   const valence = typeof valenceVal === 'number' && !isNaN(valenceVal) ? Math.max(0, Math.min(1, valenceVal)) : 0.5;
-  
+
   const genre = raw.genre && typeof raw.genre === 'string' ? raw.genre : deriveGenreFromTrack(title, artist, bpm, arousal);
-  const key = raw.key && typeof raw.key === 'string' ? raw.key : deriveCamelotKey(id, bpm, arousal);
-  
+  const key = normalizeCamelotKey(raw.key);
+
   const subBassVal = raw.subBassDensity;
-  const subBassDensity = typeof subBassVal === 'number' && !isNaN(subBassVal) 
+  const subBassDensity = typeof subBassVal === 'number' && !isNaN(subBassVal)
     ? Math.max(0, Math.min(1, subBassVal))
     : deriveSubBassDensity(id, bpm, arousal);
 
@@ -105,14 +110,22 @@ export function normalizeTrack(raw: any, index: number = 0): Track {
   };
 }
 
-function deriveCamelotKey(id: string, bpm: number, arousal: number): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) % 10007;
-  }
-  const keyNum = ((Math.floor(hash + bpm + arousal * 100)) % 12) + 1;
-  const mode = (hash % 2 === 0) ? 'A' : 'B';
-  return `${keyNum}${mode}`;
+/**
+ * Validates a Camelot key supplied by the analyser.
+ *
+ * Previously this position held `deriveCamelotKey`, which hashed the track id
+ * into a plausible-looking key. That made every "harmonic match" a hash
+ * collision rather than a musical fact, and gave the same song two different
+ * keys across two uploads. An unknown key is now simply unknown: callers treat
+ * a missing key as "cannot harmonically match", which is the honest answer.
+ */
+function normalizeCamelotKey(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const match = raw.trim().toUpperCase().match(/^(\d{1,2})([AB])$/);
+  if (!match) return undefined;
+  const num = parseInt(match[1], 10);
+  if (num < 1 || num > 12) return undefined;
+  return `${num}${match[2]}`;
 }
 
 function deriveSubBassDensity(id: string, bpm: number, arousal: number): number {
@@ -133,7 +146,9 @@ function deriveGenreFromTrack(title: string, artist: string, bpm: number, arousa
   return 'Alternative';
 }
 
-export function isCamelotCompatible(keyA: string, keyB: string): boolean {
+export function isCamelotCompatible(keyA?: string, keyB?: string): boolean {
+  // No key means no claim of compatibility, rather than a coin flip.
+  if (!keyA || !keyB) return false;
   if (!keyA || !keyB) return false;
   const matchA = keyA.match(/^(\d{1,2})([AB])$/i);
   const matchB = keyB.match(/^(\d{1,2})([AB])$/i);

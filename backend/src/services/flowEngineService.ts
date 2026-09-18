@@ -61,6 +61,10 @@ export interface EnrichedTrack {
   estimatedBpm: number;
   intensityScore: number;
   originalIndex?: number;
+  /** Musical positivity 0.0-1.0; undefined when the analyser could not tell. */
+  valence?: number;
+  /** Camelot key, e.g. "8A"; undefined when unknown. Never fabricated. */
+  camelotKey?: string;
 }
 
 export const ENGINE_BY_MODE: Record<FlowMode, { engine: EngineName; label: string; message: string }> = {
@@ -184,7 +188,8 @@ export function runFlowEngine(mode: FlowMode, enriched: EnrichedTrack[]): FlowEn
         intensity: t.intensityScore,
         arousal: t.intensityScore,
         energy: t.intensityScore,
-        valence: 0.5,
+        valence: t.valence,
+        key: t.camelotKey,
       }));
       const output = processRiseAlgorithm(input);
       sequenced = output.sequencedTracks
@@ -204,7 +209,7 @@ export function runFlowEngine(mode: FlowMode, enriched: EnrichedTrack[]): FlowEn
         artist: t.artist,
         bpm: t.estimatedBpm,
         intensity: t.intensityScore,
-        valence: 0.5,
+        valence: t.valence ?? 0.5,
       }));
       const output = processFrameAlgorithm(input);
       sequenced = output.acceptedTracks
@@ -225,7 +230,8 @@ export function runFlowEngine(mode: FlowMode, enriched: EnrichedTrack[]): FlowEn
         bpm: t.estimatedBpm,
         arousal: t.intensityScore,
         intensity: t.intensityScore,
-        valence: 0.5,
+        valence: t.valence,
+        key: t.camelotKey,
       }));
       const output = processUnhingedAlgorithm(input);
       sequenced = output.sequencedTracks

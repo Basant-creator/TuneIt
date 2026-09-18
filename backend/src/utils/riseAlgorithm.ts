@@ -77,22 +77,27 @@ export function normalizeRiseTrack(raw: any, index: number = 0): RiseTrack {
     energy,
     valence: raw.valence ?? 0.5,
     genre: raw.genre ?? 'General',
-    key: raw.key ?? deriveCamelotKey(id, bpm, energy),
+    key: normalizeCamelotKey(raw.key),
     subBassDensity: raw.subBassDensity ?? 0.5
   };
 }
 
 /**
- * Fallback generator for Camelot key notation if missing.
+ * Validates a Camelot key supplied by the analyser.
+ *
+ * Previously this position held `deriveCamelotKey`, which hashed the track id
+ * into a plausible-looking key. That made every "harmonic match" a hash
+ * collision rather than a musical fact, and gave the same song two different
+ * keys across two uploads. An unknown key is now simply unknown: callers treat
+ * a missing key as "cannot harmonically match", which is the honest answer.
  */
-function deriveCamelotKey(id: string, bpm: number, arousal: number): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) % 10007;
-  }
-  const keyNum = ((Math.floor(hash + bpm + arousal * 100)) % 12) + 1;
-  const mode = (hash % 2 === 0) ? 'A' : 'B';
-  return `${keyNum}${mode}`;
+function normalizeCamelotKey(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const match = raw.trim().toUpperCase().match(/^(\d{1,2})([AB])$/);
+  if (!match) return undefined;
+  const num = parseInt(match[1], 10);
+  if (num < 1 || num > 12) return undefined;
+  return `${num}${match[2]}`;
 }
 
 /**

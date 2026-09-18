@@ -43,6 +43,8 @@ async function fetchAndEnrichTracks(req: Request, playlistId: string): Promise<E
       artist: cached?.artist || track.artist,
       estimatedBpm: cached?.estimatedBpm || 120,
       intensityScore: cached?.intensityScore ?? 0.5,
+      valence: cached?.valence,
+      camelotKey: cached?.camelotKey,
       originalIndex: track.originalIndex,
     };
   });
