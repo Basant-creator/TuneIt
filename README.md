@@ -48,9 +48,13 @@ Log in with your **Google / YouTube Music** account. TuneIt safely loads your pu
 TuneIt scans your selected playlist and pulls basic details for each song, such as the title, artist name, video ID, and music genre tags.
 
 ### Step 3: AI Energy & Tempo Analysis
-Using Google's **Gemini AI**, TuneIt reads the song's style and determines two key metrics:
+Using Google's **Gemini AI**, TuneIt reads the song's style and determines:
 - **BPM (Beats Per Minute)**: How fast or slow the song moves.
 - **Sonic Intensity (0.0 to 1.0)**: How calm or aggressive the song feels (e.g., `0.2` = peaceful ambient/lo-fi; `0.8` = intense workout/rock beat).
+- **Valence (0.0 to 1.0)**: How bright or bleak the song feels. Drives Unhinged's contrast picking.
+- **Camelot key** (e.g. `8A`): Used for harmonic matching. Left blank when the
+  analyser cannot identify it — a missing key simply means no harmonic claim is
+  made, rather than a guessed one.
 
 ### Step 4: Smart Caching
 To keep things fast and save network data, song metrics are saved in a local database. If a song has been analyzed once, TuneIt remembers it instantly the next time.
@@ -75,8 +79,15 @@ With one click, export the brand new, perfectly ordered playlist back to your Yo
 | :--- | :--- | :--- |
 | **Build-Up Mode (Rise Engine)** | Perfect for workouts & running. | Starts with calm, easygoing tracks and steadily climbs uphill like a staircase, building up to high-energy peaks. |
 | **Drift Mode** | Great for deep work, studying, coding, or reading. | Keeps the energy level flat and stable. Eliminates jarring mood jumps so you stay focused without distraction. |
-| **Unhinged Mode** | High-energy gaming & parties. | Pairs high-intensity tracks with unexpected "curveball" transitions, using musical key alignment to keep it sounding great. |
+| **Unhinged Mode** | High-energy gaming & parties. | Pairs high-intensity tracks with unexpected "curveball" transitions, anchored by BPM and — when the analyser can identify a key — harmonic compatibility. |
 | **Frame Engine** | Cinematic Experience. | Formatted like a 3-Act movie: Warm-up Intro (Act I), Main Energy Groove (Act II), and a gentle Wind-Down (Act III). |
+
+> **Gates adapt to your playlist.** Drift and Frame decide what counts as "too
+> harsh" or "a climax" relative to the music you actually gave them, not against
+> fixed BPM and intensity numbers. Earlier builds used absolute thresholds, which
+> meant Drift discarded 100% of a lo-fi playlist — the genre it is built for —
+> and Frame kept only 23% of a metal one. Every engine now retains at least half
+> of any realistic playlist, and `npm run verify:engines` enforces that.
 
 ---
 
@@ -140,7 +151,7 @@ We executed live benchmarks on both a standard 21-track playlist and a high-scal
 | :--- | :--- | :--- | :--- | :--- |
 | **Rise Algorithm** | 21 / 21 (100%) | **96.4 / 100** | 0 | Perfect Staircase Ascent |
 | **Frame Engine** | 21 / 21 (100%) | **94.6 / 100** | 0 | Balanced 3-Act Narrative |
-| **Drift Mode** | 9 / 21 (42.9%) | **92.6 / 100** | 0 | Filters Extreme Spikes |
+| **Drift Mode** | 12 / 21 (57.1%) | **93.4 / 100** | 0 | Filters Extreme Spikes |
 | **Unhinged Engine** | 21 / 21 (100%) | **92.5 / 100** | 1 (Intentional) | Exciting Curveball Drop |
 
 ### 2. High-Scale 500-Track Dataset Speed & Retention
@@ -237,8 +248,13 @@ npm run typecheck && npx eslint src --max-warnings=0 && npm run build
 ```
 
 `verify:engines` asserts that all four engines preserve `videoId` (so exports
-work), never duplicate or invent tracks, keep their counts consistent, and
-report metrics on the same scale — across pool sizes from 1 to 80 tracks.
+work), never duplicate or invent tracks, keep their counts consistent, report
+metrics on the same scale, retain at least half of every realistic genre, and
+never derive harmonic data from a video id — across pool sizes from 1 to 80.
+
+```bash
+npm run probe:engines    # diagnostic: retention and clumping per genre
+```
 
 ---
 

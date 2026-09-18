@@ -73,6 +73,12 @@ npx prisma migrate deploy
 `npm run build` runs `prisma generate` first, so the client is always in sync
 with `prisma/schema.prisma`.
 
+> **Upgrading an existing deployment:** the `youtube_tracks` table gained two
+> nullable columns, `valence` and `camelotKey`. Both are additive, so
+> `prisma db push` applies them without data loss. Rows analysed before the
+> upgrade keep null values and are treated as "unknown" — the engines fall back
+> to energy-only sequencing for those tracks until they are re-analysed.
+
 ---
 
 ## 4. Deploy the backend
@@ -178,22 +184,26 @@ These are real constraints of the current build, not TODOs hidden in code.
    units — roughly 6 exports/day across *all* users. `DAILY_EXPORT_LIMIT` guards
    per session; the CSV download path has no quota cost and is the better
    default for most users.
-4. **Recommendations are quota-expensive.** Each run issues 4 YouTube
+4. **Harmonic matching depends on the analyser.** Camelot keys come from Gemini
+   and are stored only when well-formed. When a key is unknown, the engines make
+   no harmonic claim rather than guessing one, so Unhinged's anchoring falls back
+   to BPM and energy. Keys are never derived from the video id.
+5. **Recommendations are quota-expensive.** Each run issues 4 YouTube
    `search.list` calls at **100 units each — ~400 units per click**. They are
    fetched only when the user opens the Recommendations tab, not automatically
    after every rearrange, but at the default 10,000-unit quota that is still
    only ~25 recommendation loads per day across all users.
-5. **Gemini free tier is rate-limited.** Analysis is throttled to 14 requests/min
+6. **Gemini free tier is rate-limited.** Analysis is throttled to 14 requests/min
    (`trackCacheService.ts`) and batched 12 tracks per call. On quota exhaustion
    it silently falls back to heuristics, so scores degrade rather than fail.
-6. **First analysis of a large playlist is slow** — a cold 100-track playlist is
+7. **First analysis of a large playlist is slow** — a cold 100-track playlist is
    several Gemini round trips. Results are cached in Postgres by
    `artist:::title`, so repeat runs are fast.
-7. **Frontend tests cover units and components, not journeys.** `npm test` runs
+8. **Frontend tests cover units and components, not journeys.** `npm test` runs
    62 vitest/testing-library tests over the API client, CSV export, the stats
    panel, the preview modal and the track list. There is no end-to-end suite, so
    the signed-in OAuth journey is still only verified by hand.
-8. **Long playlists render windowed.** Above 60 tracks the list switches to
+9. **Long playlists render windowed.** Above 60 tracks the list switches to
    virtualized rows and drops the per-row reorder animation
    (`frontend/src/components/TrackList.tsx`). Row height is fixed at 68px; a
    future variable-height row would need `measureElement`.

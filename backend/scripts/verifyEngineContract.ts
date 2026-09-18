@@ -116,6 +116,94 @@ function verify(mode: (typeof SUPPORTED_MODES)[number], pool: EnrichedTrack[]): 
   return result;
 }
 
+/**
+ * Genre-shaped playlists. Uniform random data hid the fact that Drift's fixed
+ * 104-136 BPM gate returned 0% of a lo-fi playlist — the very genre it is
+ * advertised for — so retention is now asserted against realistic tempo bands.
+ */
+const GENRE_PROFILES: Array<{ name: string; bpm: [number, number]; intensity: [number, number] }> = [
+  { name: 'lofi', bpm: [70, 92], intensity: [0.12, 0.35] },
+  { name: 'acoustic', bpm: [75, 105], intensity: [0.2, 0.45] },
+  { name: 'pop', bpm: [98, 132], intensity: [0.4, 0.72] },
+  { name: 'house', bpm: [118, 130], intensity: [0.45, 0.75] },
+  { name: 'hiphop', bpm: [85, 145], intensity: [0.55, 0.9] },
+  { name: 'metal', bpm: [140, 180], intensity: [0.72, 0.97] },
+  { name: 'eclectic', bpm: [70, 175], intensity: [0.1, 0.95] },
+];
+
+/** No engine may discard more than half of any realistic playlist. */
+const MIN_GENRE_RETENTION = 0.5;
+
+function buildGenrePool(
+  profile: (typeof GENRE_PROFILES)[number],
+  size: number,
+  seed = 7
+): EnrichedTrack[] {
+  let state = seed;
+  const rand = () => {
+    state = (state * 1103515245 + 12345) % 2147483648;
+    return state / 2147483648;
+  };
+  return Array.from({ length: size }, (_, i) => ({
+    videoId: `g_${profile.name}_${i}`,
+    title: `Track ${i + 1}`,
+    artist: `Artist ${(i % 9) + 1}`,
+    estimatedBpm: Math.round(profile.bpm[0] + rand() * (profile.bpm[1] - profile.bpm[0])),
+    intensityScore: Number(
+      (profile.intensity[0] + rand() * (profile.intensity[1] - profile.intensity[0])).toFixed(2)
+    ),
+    originalIndex: i,
+  }));
+}
+
+/** Every engine must keep a usable share of every genre. */
+function verifyGenreRetention(): void {
+  for (const profile of GENRE_PROFILES) {
+    const pool = buildGenrePool(profile, 40);
+    for (const mode of SUPPORTED_MODES) {
+      const result = runFlowEngine(mode, pool);
+      const ratio = result.acceptedCount / result.originalCount;
+      check(
+        mode,
+        `genre-retention:${profile.name}`,
+        ratio >= MIN_GENRE_RETENTION,
+        `kept ${result.acceptedCount}/${result.originalCount} (${Math.round(ratio * 100)}%) of a ${profile.name} playlist`
+      );
+    }
+  }
+}
+
+/**
+ * Harmonic data must never be invented. A key is either supplied by the
+ * analyser or absent; it must not be derived from the videoId, or the same song
+ * gets a different "musical key" on every upload.
+ */
+function verifyNoFabricatedHarmony(): void {
+  const base = (videoId: string): EnrichedTrack[] => [
+    { videoId, title: 'Same Song', artist: 'Same Artist', estimatedBpm: 120, intensityScore: 0.4 },
+    { videoId: 'other_1', title: 'B', artist: 'B', estimatedBpm: 124, intensityScore: 0.5 },
+    { videoId: 'other_2', title: 'C', artist: 'C', estimatedBpm: 128, intensityScore: 0.6 },
+    { videoId: 'other_3', title: 'D', artist: 'D', estimatedBpm: 130, intensityScore: 0.7 },
+    { videoId: 'other_4', title: 'E', artist: 'E', estimatedBpm: 132, intensityScore: 0.8 },
+  ];
+
+  for (const mode of SUPPORTED_MODES) {
+    // Two uploads of the same song must sequence identically by title.
+    const a = runFlowEngine(mode, base('upload_A')).tracks.map((t) => t.title).join('|');
+    const b = runFlowEngine(mode, base('upload_B')).tracks.map((t) => t.title).join('|');
+    check(
+      mode,
+      'no-videoId-derived-harmony',
+      a === b,
+      `ordering changed with the videoId alone: "${a}" vs "${b}"`
+    );
+
+    // Running with no harmonic data at all must still succeed.
+    const noKey = runFlowEngine(mode, base('plain'));
+    check(mode, 'runs-without-harmonic-data', noKey.acceptedCount > 0, 'engine needs a key to run');
+  }
+}
+
 function main(): void {
   const poolSizes = [1, 2, 4, 5, 12, 21, 80];
 
@@ -139,6 +227,10 @@ function main(): void {
     console.log(`\nPool size ${size}:`);
     row.forEach((r) => console.log(`  ${r}`));
   }
+
+  console.log('\nGenre retention & harmonic honesty');
+  verifyGenreRetention();
+  verifyNoFabricatedHarmony();
 
   // Empty pool must not throw.
   for (const mode of SUPPORTED_MODES) {
