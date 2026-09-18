@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Pause, RotateCcw, Volume2, Sparkles, Loader2, Disc, ExternalLink } from 'lucide-react';
 import { NeoButton } from './NeoButton';
 import { decodeHtmlEntities } from '@/utils/decodeHtml';
-import { getAudioPreviewUrl } from '@/utils/audioPreview';
+import { cn } from '@/utils/cn';
+import { findAudioPreview, type PreviewMatch } from '@/utils/audioPreview';
 
 interface AudioPreviewTrack {
   videoId: string;
@@ -33,6 +34,9 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [timeLeft, setTimeLeft] = React.useState(15);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  // What the catalogue actually matched, so the user can see whether the clip
+  // is really their track rather than silently hearing a different song.
+  const [previewMatch, setPreviewMatch] = React.useState<PreviewMatch | null>(null);
   const [isLoadingAudio, setIsLoadingAudio] = React.useState(false);
   const [audioError, setAudioError] = React.useState(false);
   const [activeTrackId, setActiveTrackId] = React.useState<string | null>(null);
@@ -46,6 +50,7 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
     setAudioError(false);
     setIsPlaying(false);
     setTimeLeft(15);
+    setPreviewMatch(null);
   }
 
   // Fetch audio preview URL whenever modal opens or activeTrackId changes
@@ -54,13 +59,17 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
     const currentAudio = audioRef.current;
 
     if (isOpen && track) {
-      getAudioPreviewUrl(track.title, track.artist)
-        .then((url) => {
+      findAudioPreview(track.title, track.artist)
+        .then((match) => {
           if (!isMounted) return;
-          if (url) {
-            setPreviewUrl(url);
+          if (match) {
+            setPreviewMatch(match);
+            setPreviewUrl(match.previewUrl);
             setIsPlaying(true);
           } else {
+            // No trusted match. Showing nothing is correct here: the old
+            // behaviour fell back to a title-only search and played whatever
+            // came first, which is how a Charlie Puth track previewed as Ace.
             setAudioError(true);
           }
         })
@@ -218,7 +227,11 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
             ) : audioError || !previewUrl ? (
               <div className="flex flex-col items-center justify-center gap-2 text-center p-2 font-mono">
                 <Disc className="w-8 h-8 text-slate-500" />
-                <span className="text-xs font-black uppercase text-slate-300">Audio Preview Unavailable</span>
+                <span className="text-xs font-black uppercase text-slate-300">No Matching Preview Found</span>
+                <span className="text-[10px] text-slate-400 max-w-[240px] leading-relaxed">
+                  We could not find this exact track in the preview catalogue. We
+                  would rather play nothing than the wrong song.
+                </span>
                 <a
                   href={`https://music.youtube.com/watch?v=${track.videoId}`}
                   target="_blank"
@@ -283,6 +296,30 @@ export function AudioPreviewModal({ track, isOpen, onClose }: AudioPreviewModalP
               </p>
             )}
           </div>
+
+          {/* What the preview catalogue actually matched */}
+          {previewMatch && (
+            <div
+              className={cn(
+                'mb-4 rounded-xl border-2 px-3 py-2 font-mono text-[10px] leading-relaxed',
+                previewMatch.approximate
+                  ? 'bg-orange-50 border-brand-orange text-orange-900'
+                  : 'bg-slate-50 border-slate-300 text-slate-600'
+              )}
+            >
+              <span className="font-black uppercase tracking-wide">
+                {previewMatch.approximate ? 'Closest match' : 'Previewing'}:
+              </span>{' '}
+              <span className="font-bold">
+                {decodeHtmlEntities(previewMatch.matchedTitle)} — {decodeHtmlEntities(previewMatch.matchedArtist)}
+              </span>
+              {previewMatch.approximate && (
+                <span className="block mt-0.5">
+                  This may be a different release than the one in your playlist.
+                </span>
+              )}
+            </div>
+          )}
 
           {/* 15-Second Progress Bar */}
           <div className="mb-5 space-y-1">

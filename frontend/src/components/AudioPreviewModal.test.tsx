@@ -5,10 +5,11 @@ import { AudioPreviewModal } from './AudioPreviewModal';
 // The modal fetches a preview URL from iTunes on open; stub it so these tests
 // stay offline and deterministic.
 vi.mock('@/utils/audioPreview', () => ({
+  findAudioPreview: vi.fn(),
   getAudioPreviewUrl: vi.fn(),
 }));
 
-import { getAudioPreviewUrl } from '@/utils/audioPreview';
+import { findAudioPreview } from '@/utils/audioPreview';
 
 /** Renders and lets the preview-URL effect settle, so no state update escapes act(). */
 async function renderModal(track: Parameters<typeof AudioPreviewModal>[0]['track']) {
@@ -28,7 +29,7 @@ const baseTrack = {
 beforeEach(() => {
   // The shared setup calls restoreAllMocks after each test, which drops the
   // implementation, so it is re-applied here rather than in the mock factory.
-  vi.mocked(getAudioPreviewUrl).mockResolvedValue(null);
+  vi.mocked(findAudioPreview).mockResolvedValue(null);
 });
 
 describe('AudioPreviewModal', () => {
@@ -88,5 +89,48 @@ describe('AudioPreviewModal', () => {
   it('decodes HTML entities in the title', async () => {
     await renderModal({ ...baseTrack, title: 'Rock &amp; Roll' });
     expect(screen.getByText(/Rock & Roll/)).toBeInTheDocument();
+  });
+});
+
+describe('AudioPreviewModal preview matching', () => {
+  it('names the track the catalogue actually matched', async () => {
+    vi.mocked(findAudioPreview).mockResolvedValue({
+      previewUrl: 'https://cdn/p.m4a',
+      matchedTitle: 'How Long',
+      matchedArtist: 'Charlie Puth',
+      confidence: 0.98,
+      approximate: false,
+    });
+
+    await renderModal({ ...baseTrack, title: 'How Long', artist: 'Charlie Puth - Topic' });
+
+    expect(screen.getByText(/Previewing/i)).toBeInTheDocument();
+    expect(screen.getByText(/How Long — Charlie Puth/)).toBeInTheDocument();
+  });
+
+  it('warns when the match is only approximate', async () => {
+    vi.mocked(findAudioPreview).mockResolvedValue({
+      previewUrl: 'https://cdn/p.m4a',
+      matchedTitle: 'Professional Griefers (Radio Edit)',
+      matchedArtist: 'deadmau5',
+      confidence: 0.62,
+      approximate: true,
+    });
+
+    await renderModal({ ...baseTrack, title: 'Professional Griefers', artist: 'deadmau5 - Topic' });
+
+    expect(screen.getByText(/Closest match/i)).toBeInTheDocument();
+    expect(screen.getByText(/may be a different release/i)).toBeInTheDocument();
+  });
+
+  it('says no trusted preview exists rather than playing something else', async () => {
+    // The old resolver fell back to a title-only search here and played an
+    // unrelated song by a different artist.
+    vi.mocked(findAudioPreview).mockResolvedValue(null);
+
+    await renderModal({ ...baseTrack, title: 'Rob A Bank', artist: 'Confetti - Topic' });
+
+    expect(screen.getByText(/No Matching Preview Found/i)).toBeInTheDocument();
+    expect(screen.getByText(/rather play nothing than the wrong song/i)).toBeInTheDocument();
   });
 });

@@ -1,3 +1,5 @@
+import { cleanArtistName, cleanTrackTitle } from './trackNaming';
+
 export interface CSVTrackInput {
   videoId?: string;
   title: string;
@@ -8,31 +10,9 @@ export interface CSVTrackInput {
   vibeReview?: string;
 }
 
-/**
- * Cleans YouTube artist strings by removing common YouTube channel suffixes
- * such as "- Topic", "Release - Topic", "- VEVO", etc.
- */
-export function cleanArtistName(artist: string): string {
-  if (!artist) return '';
-  const cleaned = artist
-    .replace(/\s*-\s*topic$/i, '')
-    .replace(/\s*topic$/i, '')
-    .replace(/\s*-\s*vevo$/i, '')
-    .replace(/\s*vevo$/i, '')
-    .trim();
-  return cleaned || artist;
-}
-
-/**
- * Cleans YouTube track titles by removing video clutter like (Official Video),
- * [Official HD Video], (Lyric Video), [Official Audio], etc.
- */
-export function cleanTrackTitle(title: string): string {
-  if (!title) return '';
-  return title
-    .replace(/\s*[\(\[\{](official\s*(music\s*)?(video|audio|hd|4k|lyric\s*video|visualizer)|hd|4k|lyric\s*video|official)[\)\]\}]/gi, '')
-    .trim();
-}
+// Title and artist cleaning is shared with preview matching, so a CSV export
+// and a 15-second preview always agree on what a track is called.
+export { cleanArtistName, cleanTrackTitle } from './trackNaming';
 
 /**
  * Escapes a cell value for CSV formatting.

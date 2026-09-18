@@ -63,3 +63,24 @@ if (!window.matchMedia) {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+// jsdom does not implement media playback: play() returns undefined instead of
+// a Promise, and pause()/load() throw "Not implemented". Any component holding
+// an <audio> element needs these to exist.
+if (typeof window !== 'undefined' && window.HTMLMediaElement) {
+  Object.defineProperty(window.HTMLMediaElement.prototype, 'play', {
+    configurable: true,
+    writable: true,
+    value: () => Promise.resolve(),
+  });
+  Object.defineProperty(window.HTMLMediaElement.prototype, 'pause', {
+    configurable: true,
+    writable: true,
+    value: () => {},
+  });
+  Object.defineProperty(window.HTMLMediaElement.prototype, 'load', {
+    configurable: true,
+    writable: true,
+    value: () => {},
+  });
+}
