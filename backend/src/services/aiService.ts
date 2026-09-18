@@ -47,6 +47,11 @@ export interface AIAnalysisResult {
   estimated_bpm: number;
   intensity_score: number;
   vibe_review: string;
+  /** Musical positivity, 0.0-1.0. Undefined when the model did not supply it. */
+  valence?: number;
+  /** Camelot wheel notation, e.g. "8A". Undefined when genuinely unknown —
+   *  never fabricated, because the sequencing engines treat it as real. */
+  camelot_key?: string;
 }
 
 export interface BatchTrackItem extends TrackMetadata {
@@ -74,8 +79,12 @@ Intensity scale guidelines:
 Return strictly a raw JSON array of objects, matching the exact length and index of the input list. Each object must have:
 - "index" (integer, matching input track index)
 - "estimated_bpm" (integer)
-- "intensity_score" (float rounded to two decimal places)
+- "intensity_score" (float STRICTLY between 0.0 and 1.0, two decimal places — never a 0-10 rating; 0.3 not 3)
+- "valence" (float 0.0 to 1.0 — musical positivity: 0.0 is bleak/sad/menacing, 0.5 is neutral, 1.0 is bright/euphoric/triumphant)
+- "camelot_key" (string, Camelot wheel notation "1A" to "12B", where A is minor and B is major — e.g. A minor is "8A", C major is "8B". Use null if you genuinely cannot tell.)
 - "vibe_review" (string, 8 to 12 words)
+
+Only give a camelot_key when you actually recognise the track or its style strongly implies one. A null is far better than a guess, because downstream harmonic mixing trusts this value.
 
 Do not include markdown code block formatting.`;
 
@@ -115,6 +124,89 @@ export async function analyzeTrackMetadata(metadata: TrackMetadata): Promise<AIA
   }
 }
 
+/**
+ * Pulls the first balanced JSON array out of a model response.
+ *
+ * `responseMimeType: 'application/json'` is a strong hint, not a guarantee: the
+ * model occasionally appends prose or a second document, and `JSON.parse` then
+ * throws on the whole payload. That failure silently downgraded an entire batch
+ * of 12 tracks to heuristics, so the array is extracted explicitly instead.
+ */
+export function extractJsonArray(raw: string): string | null {
+  const text = raw.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/i, '').trim();
+  const start = text.indexOf('[');
+  if (start < 0) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '[') depth++;
+    else if (ch === ']') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+/** Accepts a BPM only if it is musically plausible. */
+export function normalizeBpm(raw: unknown): number | undefined {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
+  const rounded = Math.round(raw);
+  if (rounded < 40 || rounded > 250) return undefined;
+  return rounded;
+}
+
+/**
+ * Accepts an intensity only if it is in [0, 1].
+ *
+ * The model sometimes answers on a 0-10 scale ("intensity_score": 8). Stored
+ * unchecked, that made a mid-energy track read as maximum energy once clamped,
+ * which corrupts every sequencing decision. An out-of-range value is rejected so
+ * the caller falls back to heuristics instead.
+ */
+export function normalizeIntensity(raw: unknown): number | undefined {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
+  if (raw < 0 || raw > 1) return undefined;
+  return Number(raw.toFixed(2));
+}
+
+/** Accepts a valence only if it is a real number in [0, 1]. */
+export function normalizeValence(raw: unknown): number | undefined {
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) return undefined;
+  if (raw < 0 || raw > 1) return undefined;
+  return Number(raw.toFixed(2));
+}
+
+/**
+ * Accepts a Camelot key only if it is well-formed ("1A".."12B").
+ * Anything else becomes undefined rather than a plausible-looking guess.
+ */
+export function normalizeCamelotKey(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const match = raw.trim().toUpperCase().match(/^(\d{1,2})([AB])$/);
+  if (!match) return undefined;
+  const num = parseInt(match[1], 10);
+  if (num < 1 || num > 12) return undefined;
+  return `${num}${match[2]}`;
+}
+
 export async function analyzeBatchTrackMetadata(
   batch: BatchTrackItem[]
 ): Promise<Map<number, AIAnalysisResult>> {
@@ -142,20 +234,41 @@ export async function analyzeBatchTrackMetadata(
       },
     });
 
-    const text = response.text;
-    if (text) {
-      const parsed = JSON.parse(text) as BatchAIAnalysisResult[];
+    const arrayText = response.text ? extractJsonArray(response.text) : null;
+    if (arrayText) {
+      const parsed = JSON.parse(arrayText) as BatchAIAnalysisResult[];
       if (Array.isArray(parsed)) {
+        let rejected = 0;
         for (const res of parsed) {
-          if (res && typeof res.index === 'number') {
-            resultMap.set(res.index, {
-              estimated_bpm: res.estimated_bpm || 120,
-              intensity_score: res.intensity_score ?? 0.5,
-              vibe_review: res.vibe_review || 'Vibe analyzed by Gemini AI.',
-            });
+          if (!res || typeof res.index !== 'number') continue;
+
+          const bpm = normalizeBpm(res.estimated_bpm);
+          const intensity = normalizeIntensity(res.intensity_score);
+
+          // Without a trustworthy BPM and intensity there is nothing to
+          // sequence on; leaving the index unset makes the caller use its
+          // heuristic rather than a corrupt value.
+          if (bpm === undefined || intensity === undefined) {
+            rejected++;
+            continue;
           }
+
+          resultMap.set(res.index, {
+            estimated_bpm: bpm,
+            intensity_score: intensity,
+            vibe_review: res.vibe_review || 'Vibe analyzed by Gemini AI.',
+            valence: normalizeValence(res.valence),
+            camelot_key: normalizeCamelotKey(res.camelot_key),
+          });
+        }
+        if (rejected > 0) {
+          console.warn(
+            `[AIService] Discarded ${rejected}/${parsed.length} analyses with out-of-range BPM or intensity; those tracks fall back to heuristics.`
+          );
         }
       }
+    } else if (response.text) {
+      console.warn('[AIService] Could not locate a JSON array in the Gemini response.');
     }
   } catch (error: any) {
     const isQuotaError =

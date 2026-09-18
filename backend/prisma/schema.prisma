@@ -14,6 +14,11 @@ model YoutubeTrack {
   artist         String
   estimatedBpm   Int
   intensityScore Float
+  /// Musical positivity 0.0-1.0. Null when the analyser could not determine it.
+  valence        Float?
+  /// Camelot wheel key, e.g. "8A". Null when genuinely unknown — the sequencing
+  /// engines treat a present value as real harmonic data, so it is never guessed.
+  camelotKey     String?
   lastUpdated    DateTime @default(now())
 
   @@map("youtube_tracks")

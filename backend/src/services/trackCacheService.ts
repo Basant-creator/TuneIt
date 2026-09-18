@@ -45,6 +45,9 @@ export interface CachedTrackResult {
   artist: string;
   estimatedBpm: number;
   intensityScore: number;
+  /** Undefined when unknown — callers must not substitute a default. */
+  valence?: number;
+  camelotKey?: string;
 }
 
 /**
@@ -128,10 +131,17 @@ export async function getOrAnalyzeTracksBatch(
 
         let bpm: number;
         let intensity: number;
+        // Valence and key stay null unless the analyser actually produced them.
+        // The heuristic fallback cannot infer either, and a fabricated value
+        // would be worse than none for harmonic sequencing.
+        let valence: number | null = null;
+        let camelotKey: string | null = null;
 
         if (aiRes) {
           bpm = aiRes.estimated_bpm;
           intensity = aiRes.intensity_score;
+          valence = aiRes.valence ?? null;
+          camelotKey = aiRes.camelot_key ?? null;
         } else {
           // Heuristic fallback if AI failed or 429 quota hit
           const heuristic = estimateTrackHeuristics(p.title, p.artist, p.tags);
@@ -150,6 +160,8 @@ export async function getOrAnalyzeTracksBatch(
               artist: cleanArtist.substring(0, 255),
               estimatedBpm: bpm,
               intensityScore: intensity,
+              valence,
+              camelotKey,
             },
             update: {
               videoId: p.videoId || null,
@@ -157,6 +169,9 @@ export async function getOrAnalyzeTracksBatch(
               intensityScore: intensity,
               title: p.title.substring(0, 255),
               artist: cleanArtist.substring(0, 255),
+              // Never overwrite a known value with a null from a failed re-analysis.
+              ...(valence !== null ? { valence } : {}),
+              ...(camelotKey !== null ? { camelotKey } : {}),
               lastUpdated: new Date(),
             },
           });
@@ -190,6 +205,8 @@ export async function getOrAnalyzeTracksBatch(
         artist: cached.artist,
         estimatedBpm: cached.estimatedBpm,
         intensityScore: cached.intensityScore,
+        valence: cached.valence ?? undefined,
+        camelotKey: cached.camelotKey ?? undefined,
       };
     }
 
