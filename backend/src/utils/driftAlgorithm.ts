@@ -83,20 +83,104 @@ function optimizeSequenceFlow(tracks: DriftTrack[]): DriftTrack[] {
  * @param rawTracks The raw, unsorted playlist dataset
  * @returns An object containing the optimized playlist and any rejected harsh tracks
  */
+/** The classic Drift zone: mid-tempo, low-intensity. */
+export const CANONICAL_DRIFT_GATE = {
+  lowerBpm: 104,
+  upperBpm: 136,
+  maxIntensity: 0.65,
+} as const;
+
+/**
+ * Drift aims to keep roughly this share of a playlist. Below it, the canonical
+ * window is judged a poor fit for this particular music and is re-centred.
+ */
+const MIN_RETENTION = 0.5;
+/** Never re-centre on so few tracks that the percentiles are meaningless. */
+const MIN_POOL_FOR_ADAPTIVE = 6;
+
+export interface DriftGate {
+  lowerBpm: number;
+  upperBpm: number;
+  maxIntensity: number;
+  /** True when the window was re-centred on the playlist's own distribution. */
+  adaptive: boolean;
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)));
+  return sorted[idx];
+}
+
+/**
+ * Picks the vibe gate for a playlist: the canonical window when it fits, or one
+ * derived from the playlist's own tempo and intensity spread when it does not.
+ */
+export function resolveDriftGate(tracks: DriftTrack[]): DriftGate {
+  const canonical: DriftGate = { ...CANONICAL_DRIFT_GATE, adaptive: false };
+  if (tracks.length === 0) return canonical;
+
+  const passesCanonical = tracks.filter(
+    (t) =>
+      t.intensityScore <= canonical.maxIntensity &&
+      t.estimatedBpm >= canonical.lowerBpm &&
+      t.estimatedBpm <= canonical.upperBpm
+  ).length;
+
+  // The canonical window suits this playlist — keep the established behaviour.
+  if (passesCanonical / tracks.length >= MIN_RETENTION) return canonical;
+  if (tracks.length < MIN_POOL_FOR_ADAPTIVE) {
+    // Too small to infer a distribution; widening arbitrarily would be guessing.
+    return canonical;
+  }
+
+  const bpms = tracks.map((t) => t.estimatedBpm).sort((a, b) => a - b);
+  const intensities = tracks.map((t) => t.intensityScore).sort((a, b) => a - b);
+
+  // Centre on the playlist's tempo mass, keeping a window of comparable width to
+  // the canonical 32 BPM so transitions stay gentle.
+  const medianBpm = percentile(bpms, 0.5);
+  const spread = Math.max(16, (percentile(bpms, 0.75) - percentile(bpms, 0.25)) * 1.5);
+
+  // Drift stays biased toward the calmer end of whatever it is given, rather
+  // than simply accepting everything.
+  const intensityCeiling = Math.max(
+    percentile(intensities, 0.6),
+    Math.min(canonical.maxIntensity, percentile(intensities, 0.5) + 0.1)
+  );
+
+  return {
+    lowerBpm: Math.max(40, medianBpm - spread),
+    upperBpm: Math.min(220, medianBpm + spread),
+    maxIntensity: Math.min(1, Number(intensityCeiling.toFixed(2))),
+    adaptive: true,
+  };
+}
+
 export function generateDriftPlaylist(rawTracks: DriftTrack[]): DriftResult {
   if (!rawTracks || rawTracks.length === 0) {
     return { tracks: [], harshTracks: [] };
   }
 
-  // 1. Hard Vibe Gate
-  const LOWER_BPM_BOUND = 104;
-  const UPPER_BPM_BOUND = 136;
-  const MAX_INTENSITY = 0.65;
+  // 1. Vibe Gate
+  //
+  // The principle is unchanged: Drift keeps the calm, steady core of a playlist
+  // and rejects the tracks that would break the trance. What changed is where
+  // that boundary sits.
+  //
+  // The canonical window below describes the classic Drift zone. Applied as an
+  // absolute rule it discarded entire genres: a lo-fi study playlist (70-92 BPM)
+  // and a metal playlist (140-180 BPM) both scored 0% retention, and lo-fi is
+  // precisely what Drift is advertised for. When the canonical window keeps too
+  // little of a playlist, the gate re-centres on that playlist's own
+  // distribution, so "drift" means the smoothest run through *your* music
+  // rather than the subset that happens to sit at 104-136 BPM.
+  const gate = resolveDriftGate(rawTracks);
 
   const isHarsh = (track: DriftTrack) =>
-    track.intensityScore > MAX_INTENSITY ||
-    track.estimatedBpm < LOWER_BPM_BOUND ||
-    track.estimatedBpm > UPPER_BPM_BOUND;
+    track.intensityScore > gate.maxIntensity ||
+    track.estimatedBpm < gate.lowerBpm ||
+    track.estimatedBpm > gate.upperBpm;
 
   const filteredPool = rawTracks.filter((track) => !isHarsh(track));
   const harshTracks = rawTracks.filter(isHarsh);

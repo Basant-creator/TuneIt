@@ -175,6 +175,30 @@ export function computeSmoothnessScore(tracks: Track[]): {
  * ACT II: Dynamic Arc (Climax or Ambient Valley, Auto-detected via Skewness)
  * ACT III: Resolution (Strict Monotonic Glideway or Escalation)
  */
+/**
+ * Value at a percentile of a sorted array (0 = min, 1 = max).
+ */
+function percentileOf(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)));
+  return sorted[idx];
+}
+
+/**
+ * Frame's narrative needs a *rare* climax, and rarity is relative to the
+ * playlist. Applied as fixed numbers, the 0.75 / 0.15 cutoffs treated an entire
+ * loud genre as "all climax" and rejected 77% of a metal playlist. The gate now
+ * only tightens beyond the canonical cutoff, so a mixed or quiet playlist keeps
+ * exactly its previous behaviour.
+ */
+function resolveExtremeThresholds(energies: number[]): { peak: number; valley: number } {
+  const sorted = [...energies].sort((a, b) => a - b);
+  return {
+    peak: Math.max(0.75, percentileOf(sorted, 0.9)),
+    valley: Math.min(0.15, percentileOf(sorted, 0.1)),
+  };
+}
+
 export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
   if (inputTracks.length === 0) {
     return {
@@ -214,6 +238,7 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
   const actDirection: ActDirection = skewness >= 0 ? 'SPIKE_AND_TANK' : 'TANK_AND_SPIKE';
 
   // --- Phase B: Rejection Filter (Hard Gates) ---
+  const { peak: peakThreshold, valley: valleyThreshold } = resolveExtremeThresholds(initialIntensities);
   const rejectedTracks: RejectedTrack[] = [];
   let candidatePool: Track[] = [...inputTracks];
 
@@ -239,17 +264,17 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
 
   // Gate 2: Climax / Valley Bloat
   if (actDirection === 'SPIKE_AND_TANK') {
-    const peakTracks = candidatePool.filter(t => getTrackEnergy(t) > 0.75);
+    const peakTracks = candidatePool.filter(t => getTrackEnergy(t) > peakThreshold);
     if (peakTracks.length > 2) {
       peakTracks.sort((a, b) => getTrackEnergy(b) - getTrackEnergy(a));
       const allowedPeakIds = new Set(peakTracks.slice(0, 2).map(t => t.id));
 
       const climaxPassed: Track[] = [];
       for (const track of candidatePool) {
-        if (getTrackEnergy(track) > 0.75 && !allowedPeakIds.has(track.id)) {
+        if (getTrackEnergy(track) > peakThreshold && !allowedPeakIds.has(track.id)) {
           rejectedTracks.push({
             track,
-            reason: `Climax Bloat: Exceeds top 2 extreme peak tracks (${getTrackEnergy(track).toFixed(2)} intensity > 0.75)`
+            reason: `Climax Bloat: Exceeds top 2 extreme peak tracks (${getTrackEnergy(track).toFixed(2)} intensity > ${peakThreshold.toFixed(2)})`
           });
         } else {
           climaxPassed.push(track);
@@ -258,17 +283,17 @@ export function processFrameAlgorithm(inputTracks: Track[]): FrameOutput {
       candidatePool = climaxPassed;
     }
   } else {
-    const valleyTracks = candidatePool.filter(t => getTrackEnergy(t) < 0.15);
+    const valleyTracks = candidatePool.filter(t => getTrackEnergy(t) < valleyThreshold);
     if (valleyTracks.length > 2) {
       valleyTracks.sort((a, b) => getTrackEnergy(a) - getTrackEnergy(b));
       const allowedValleyIds = new Set(valleyTracks.slice(0, 2).map(t => t.id));
 
       const valleyPassed: Track[] = [];
       for (const track of candidatePool) {
-        if (getTrackEnergy(track) < 0.15 && !allowedValleyIds.has(track.id)) {
+        if (getTrackEnergy(track) < valleyThreshold && !allowedValleyIds.has(track.id)) {
           rejectedTracks.push({
             track,
-            reason: `Valley Bloat: Exceeds bottom 2 extreme valley tracks (${getTrackEnergy(track).toFixed(2)} intensity < 0.15)`
+            reason: `Valley Bloat: Exceeds bottom 2 extreme valley tracks (${getTrackEnergy(track).toFixed(2)} intensity < ${valleyThreshold.toFixed(2)})`
           });
         } else {
           valleyPassed.push(track);
