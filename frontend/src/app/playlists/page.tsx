@@ -57,7 +57,7 @@ export default function PlaylistsPage() {
       <Header userProfile={userProfile} showNavLinks={false} />
 
       {/* MAIN CONTENT */}
-      <main className="max-w-7xl mx-auto py-12 px-6">
+      <main id="main" tabIndex={-1} className="outline-none max-w-7xl mx-auto py-12 px-6">
         <div className="mb-10 flex flex-col items-start gap-4">
           <NeoButton color="white" size="sm" onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2 inline" />
@@ -81,7 +81,7 @@ export default function PlaylistsPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <Loader2 className="w-12 h-12 animate-spin text-brand-pink" />
-            <p className="font-mono font-black uppercase text-sm">Loading your vibes...</p>
+            <p className="font-mono font-black uppercase text-sm">Pulling your playlists</p>
           </div>
         ) : error ? (
           <div className="bg-white neo-border border-black p-10 sm:p-12 rounded-3xl text-center flex flex-col items-center justify-center max-w-xl mx-auto">
@@ -92,9 +92,9 @@ export default function PlaylistsPage() {
             <p className="font-mono text-sm text-slate-600 mb-6 max-w-sm font-bold">{error}</p>
             <div className="flex flex-col sm:flex-row gap-3">
               {needsAuth ? (
-                <a href={api.loginUrl()}>
-                  <NeoButton color="yellow">Connect YouTube Music</NeoButton>
-                </a>
+                <NeoButton href={api.loginUrl()} color="yellow">
+                  Connect YouTube Music
+                </NeoButton>
               ) : (
                 <NeoButton color="yellow" onClick={() => window.location.reload()}>
                   Try Again

@@ -114,20 +114,23 @@ export function Header({
               </span>
             </div>
           ) : isAuthenticated ? (
+            // Visible at every width now. It was `hidden sm:inline-flex`, so on a
+            // phone the header was only a logo, with no way to sign in from it.
             <NeoButton
               color="yellow"
               size="sm"
-              className="hidden sm:inline-flex rounded-full"
+              className="rounded-full"
               onClick={() => router.push('/playlists')}
             >
-              My Playlists
+              <span className="sm:hidden">Playlists</span>
+              <span className="hidden sm:inline">My Playlists</span>
             </NeoButton>
           ) : (
-            <a href={api.loginUrl()}>
-              <NeoButton color="yellow" size="sm" className="hidden sm:inline-flex rounded-full">
-                Connect YouTube Music
-              </NeoButton>
-            </a>
+            // A real link, not a <button> nested inside an <a>.
+            <NeoButton href={api.loginUrl()} color="yellow" size="sm" className="rounded-full">
+              <span className="sm:hidden">Connect</span>
+              <span className="hidden sm:inline">Connect YouTube Music</span>
+            </NeoButton>
           )}
         </div>
       </div>
