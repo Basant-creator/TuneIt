@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { google, youtube_v3 } from 'googleapis';
 import { googleConfig } from '../config/ytmusic';
 import { isDeletedOrUnavailableTrack } from '../utils/trackUtils';
@@ -45,9 +46,18 @@ export interface YouTubeTrack {
   originalIndex: number;
 }
 
+/** Google's access tokens last an hour; used only if it omits expiry_date. */
+const ACCESS_TOKEN_FALLBACK_MS = 60 * 60 * 1000;
+/** Treat a token as expired this long before Google does. */
+const EXPIRY_MARGIN_MS = 60 * 1000;
+
 export class YtMusicService {
   private oauth2Client: any;
   private hasTokens = false;
+  /** When Google's access token stops working (ms since epoch); null until signed in. */
+  private expiresAt: number | null = null;
+  /** sha256 of the YouTube channel id, for the export limit. Memory only. */
+  private accountKey: string | null = null;
 
   /**
    * One instance per browser session. Tokens live on the instance, never on the
@@ -59,16 +69,6 @@ export class YtMusicService {
       googleConfig.clientSecret,
       googleConfig.redirectUri
     );
-
-    // Persist refreshed access tokens back onto this session's client.
-    this.oauth2Client.on('tokens', (tokens: any) => {
-      if (tokens?.refresh_token || tokens?.access_token) {
-        this.oauth2Client.setCredentials({
-          ...this.oauth2Client.credentials,
-          ...tokens,
-        });
-      }
-    });
   }
 
   /**
@@ -85,38 +85,108 @@ export class YtMusicService {
    * Guards service methods to ensure an active Google session exists.
    */
   private ensureAuthenticated(): void {
-    if (!this.hasTokens) {
+    if (!this.hasSession()) {
       throw new Error('Unauthorized. No active Google session.');
     }
   }
 
   /**
    * Generates the Google authorize URL with YouTube scopes.
-   * offline access_type is required to get a refresh token!
+   *
+   * Sign-in is temporary by design: `access_type: 'online'` means Google issues
+   * only a short-lived access token (about an hour) and no refresh token, so
+   * TuneIt cannot act on the account once that token expires or is revoked at
+   * sign-out. `select_account`
+   * makes Google ask which account to use every time, which matters on a
+   * shared computer.
    */
   public getAuthUrl(state?: string): string {
     return this.oauth2Client.generateAuthUrl({
-      access_type: 'offline',
+      access_type: 'online',
       scope: ['https://www.googleapis.com/auth/youtube'],
-      prompt: 'consent', // Forces Google to show consent screen to ensure refresh token is returned
+      prompt: 'select_account',
       ...(state ? { state } : {}),
     });
   }
 
   /**
-   * Exchanges authorization code for tokens and stores them in memory.
+   * Exchanges the authorization code for an access token, held in memory only.
    */
-  public async handleCallback(code: string): Promise<any> {
+  public async handleCallback(code: string): Promise<void> {
     try {
       const { tokens } = await this.oauth2Client.getToken(code);
-      this.oauth2Client.setCredentials(tokens);
-      this.hasTokens = true;
-      console.log('[YtMusicService] Google OAuth tokens set successfully.');
-      return tokens;
+      this.applyTokens(tokens);
+      console.log('[YtMusicService] Google access token set for this visit.');
     } catch (err: any) {
       console.error('[YtMusicService] Error during Google token exchange:', err?.message || err);
       throw err;
     }
+  }
+
+  /**
+   * Keeps only the short-lived access token. A refresh token is dropped even
+   * if Google sends one, so the session can never outlive the access token.
+   */
+  public applyTokens(tokens: {
+    access_token?: string | null;
+    expiry_date?: number | null;
+    token_type?: string | null;
+    scope?: string;
+    refresh_token?: string | null;
+  }): void {
+    if (!tokens?.access_token) throw new Error('Unauthorized. Google returned no access token.');
+    this.oauth2Client.setCredentials({
+      access_token: tokens.access_token,
+      expiry_date: tokens.expiry_date ?? undefined,
+      token_type: tokens.token_type ?? undefined,
+      scope: tokens.scope,
+    });
+    this.expiresAt = tokens.expiry_date ?? Date.now() + ACCESS_TOKEN_FALLBACK_MS;
+    this.hasTokens = true;
+  }
+
+  /** When this sign-in ends, or null if it never started. */
+  public getExpiresAt(): number | null {
+    return this.expiresAt;
+  }
+
+  /**
+   * Ends the sign-in: asks Google to revoke the access token, then forgets it.
+   * Revocation is best effort — the token expires within the hour regardless,
+   * and signing out must never fail because Google is unreachable.
+   */
+  public async signOut(): Promise<void> {
+    // Revoke anything Google still honours, including a token in its last
+    // minute that hasSession() already treats as expired.
+    const wasLive = this.hasTokens && this.expiresAt !== null && Date.now() < this.expiresAt;
+    const credentials = this.oauth2Client.credentials;
+    this.hasTokens = false;
+    this.expiresAt = null;
+    this.accountKey = null;
+    if (wasLive && credentials?.access_token) {
+      try {
+        await this.oauth2Client.revokeToken(credentials.access_token);
+      } catch (err: any) {
+        console.warn('[YtMusicService] Token revocation failed (it expires on its own):', err?.message || err);
+      }
+    }
+    this.oauth2Client.setCredentials({});
+  }
+
+  /**
+   * A stable, anonymous key for the signed-in YouTube account: a sha256 of the
+   * channel id, kept on this in-memory session only. Used so the daily export
+   * limit follows the account rather than the session, which a fresh sign-in
+   * would otherwise reset.
+   */
+  public async getAccountKey(): Promise<string> {
+    this.ensureAuthenticated();
+    if (this.accountKey) return this.accountKey;
+    const response = await this.getYoutubeClient().channels.list({ part: ['id'], mine: true });
+    const channelId = response.data.items?.[0]?.id;
+    if (!channelId) throw new Error('No YouTube channel associated with this account.');
+    this.accountKey = crypto.createHash('sha256').update(channelId).digest('hex');
+    return this.accountKey;
   }
 
   /**
@@ -385,9 +455,16 @@ export class YtMusicService {
   }
 
   /**
-   * Checks if a session exists.
+   * True while the access token is still good. With online access there is no
+   * refresh token, so an expired token means signed out; stopping a minute
+   * early keeps a request from starting with seconds to spare.
    */
-  public hasSession(): boolean {
-    return this.hasTokens;
+  public hasSession(now: number = Date.now()): boolean {
+    return this.hasTokens && this.expiresAt !== null && now < this.expiresAt - EXPIRY_MARGIN_MS;
+  }
+
+  /** Signed in once, and that sign-in has now run out. */
+  public isExpired(now: number = Date.now()): boolean {
+    return this.expiresAt !== null && !this.hasSession(now);
   }
 }

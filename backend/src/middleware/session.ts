@@ -9,7 +9,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { YtMusicService } from '../services/ytmusicService';
-import { getSessionService, createSessionId, initSession } from '../services/sessionStore';
+import { getSessionService, createSessionId, initSession, SESSION_MAX_AGE_MS } from '../services/sessionStore';
 import { googleConfig } from '../config/ytmusic';
 
 export const SESSION_COOKIE = 'tuneit_sid';
@@ -58,18 +58,24 @@ export function attachSession(req: Request, _res: Response, next: NextFunction):
 export function startSession(res: Response): { sessionId: string; service: YtMusicService } {
   const sessionId = createSessionId();
   const service = initSession(sessionId);
+  setSessionCookie(res, sessionId, SESSION_MAX_AGE_MS);
+  return { sessionId, service };
+}
 
+/**
+ * Writes the session cookie. After sign-in its lifetime is reset to match the
+ * Google token, so the browser forgets the session when the token expires.
+ */
+export function setSessionCookie(res: Response, sessionId: string, maxAgeMs: number): void {
   res.cookie(SESSION_COOKIE, sessionId, {
     httpOnly: true,
     // Frontend and backend are usually on different domains in production, so
     // the cookie has to be SameSite=None; that in turn requires Secure.
     sameSite: googleConfig.crossSiteCookies ? 'none' : 'lax',
     secure: googleConfig.crossSiteCookies || googleConfig.isProduction,
-    maxAge: 1000 * 60 * 60 * 12,
+    maxAge: Math.max(0, Math.min(maxAgeMs, SESSION_MAX_AGE_MS)),
     path: '/',
   });
-
-  return { sessionId, service };
 }
 
 export function clearSessionCookie(res: Response): void {

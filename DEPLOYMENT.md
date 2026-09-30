@@ -22,8 +22,15 @@ TuneIt is two deployables that talk over HTTP with a session cookie:
 
 > **Google verification.** The `https://www.googleapis.com/auth/youtube` scope is
 > *sensitive*. Until the OAuth consent screen is verified, only accounts listed
-> as **Test users** can sign in, and consent expires every 7 days. Plan for the
-> verification review before any public launch.
+> as **Test users** can sign in. Plan for the verification review before any
+> public launch.
+
+> **Sign-in is temporary.** Login requests Google's *online* access: one access
+> token that expires after about an hour, and no refresh token (one is dropped
+> even if Google sends it). Nothing about the account is written to disk or the
+> database. Signing out, or signing in again, revokes the token at Google; an
+> abandoned session simply expires. After an hour a visitor signs in again, and
+> any unexported sequence can still be downloaded as CSV.
 
 ---
 
@@ -45,7 +52,7 @@ do not commit the filled-in versions.
 | `GOOGLE_REDIRECT_URI` | yes | Must match the Google console entry character for character. |
 | `GEMINI_API_KEY` | yes | Without it every track falls back to heuristic BPM/intensity. |
 | `DATABASE_URL` | yes | PostgreSQL. Add `?sslmode=require` for most managed providers. |
-| `DAILY_EXPORT_LIMIT` | no | Playlist creations per session per day. Default `3`. |
+| `DAILY_EXPORT_LIMIT` | no | Playlist creations per YouTube account per day. Default `3`. |
 | `CROSS_SITE_COOKIES` | no | Force `SameSite=None; Secure`. Auto-detected from the URLs above. |
 
 In production, a missing `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
@@ -172,18 +179,22 @@ npm run build
 
 These are real constraints of the current build, not TODOs hidden in code.
 
-1. **Sessions are in-process.** `backend/src/services/sessionStore.ts` holds
-   OAuth tokens in a `Map`. Consequences:
+1. **Sessions are in-process and last at most an hour.**
+   `backend/src/services/sessionStore.ts` holds each visitor's access token in a
+   `Map` until Google expires it. Consequences:
    - A backend restart signs everyone out.
+   - A visit longer than an hour needs a second sign-in.
    - **Running more than one replica breaks login** — the callback may land on a
      different instance than the one that issued the session. Either pin to a
      single instance or move the store to Redis/Postgres before scaling out.
 2. **The export rate limiter is in-process too**, with the same caveat
-   (`backend/src/utils/exportRateLimiter.ts`).
+   (`backend/src/utils/exportRateLimiter.ts`). It counts per YouTube account (a
+   sha256 of the channel id, in memory only), so signing in again does not reset
+   it.
 3. **YouTube Data API quota** is 10,000 units/day by default. Playlist creation
    costs ~50 units and each track insert ~50, so a 30-track export is ~1,550
    units — roughly 6 exports/day across *all* users. `DAILY_EXPORT_LIMIT` guards
-   per session; the CSV download path has no quota cost and is the better
+   per account; the CSV download path has no quota cost and is the better
    default for most users.
 4. **Harmonic matching depends on the analyser.** Camelot keys come from Gemini
    and are stored only when well-formed. When a key is unknown, the engines make

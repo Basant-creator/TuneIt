@@ -14,6 +14,9 @@
 import http from 'http';
 import type { AddressInfo } from 'net';
 import app from '../src/server';
+import { initSession, getSessionService, sweepExpiredSessions } from '../src/services/sessionStore';
+import { handleControllerError } from '../src/utils/errorHandler';
+import type { YtMusicService } from '../src/services/ytmusicService';
 
 interface Result {
   status: number;
@@ -149,9 +152,17 @@ async function main(): Promise<void> {
       `state=${state} cookie=${sessionCookie}`
     );
     assert(
-      'login requests offline access (refresh token)',
-      loginUrl.searchParams.get('access_type') === 'offline'
+      'login requests temporary online access (no refresh token)',
+      loginUrl.searchParams.get('access_type') === 'online',
+      String(loginUrl.searchParams.get('access_type'))
     );
+    assert(
+      'login asks which Google account to use',
+      loginUrl.searchParams.get('prompt') === 'select_account',
+      String(loginUrl.searchParams.get('prompt'))
+    );
+    const maxAge = Number(/Max-Age=(\d+)/i.exec(rawCookie)?.[1]);
+    assert('session cookie lasts at most an hour', maxAge > 0 && maxAge <= 3600, rawCookie);
 
     console.log('\nSession isolation');
     const secondLogin = await call(port, 'GET', '/auth/login');
@@ -164,6 +175,97 @@ async function main(): Promise<void> {
       'an un-completed session still cannot read playlists',
       withCookie.status === 401,
       `got ${withCookie.status}`
+    );
+
+    console.log('\nTemporary sign-in');
+    const HOUR = 60 * 60 * 1000;
+    const signedIn = (expiresIn: number): { id: string; service: YtMusicService } => {
+      const id = `smoke-${Math.random().toString(36).slice(2)}`;
+      const service = initSession(id);
+      service.applyTokens({ access_token: `at-${id}`, refresh_token: 'rt-should-be-dropped', expiry_date: Date.now() + expiresIn });
+      return { id, service };
+    };
+    const credentialsOf = (service: YtMusicService) => (service as any).oauth2Client.credentials;
+    const stubRevoke = (service: YtMusicService, fail = false) => {
+      const revoked: string[] = [];
+      (service as any).oauth2Client.revokeToken = async (token: string) => {
+        if (fail) throw new Error('network down');
+        revoked.push(token);
+        return {};
+      };
+      return revoked;
+    };
+
+    const live = signedIn(HOUR);
+    assert('a fresh access token counts as signed in', live.service.hasSession());
+    assert('a refresh token is never kept, even if Google sends one', !credentialsOf(live.service).refresh_token);
+
+    const liveStatus = await call(port, 'GET', '/auth/status', { Cookie: `tuneit_sid=${live.id}` });
+    assert('status reports authenticated while the token is good', liveStatus.body?.authenticated === true);
+    assert(
+      'status reports when the sign-in ends',
+      typeof liveStatus.body?.expiresAt === 'number' && liveStatus.body.expiresAt > Date.now(),
+      JSON.stringify(liveStatus.body)
+    );
+
+    const expired = signedIn(-1000);
+    assert('an expired token is signed out', !expired.service.hasSession() && expired.service.isExpired());
+    const expiredCall = await call(port, 'GET', '/api/playlists', { Cookie: `tuneit_sid=${expired.id}` });
+    assert(
+      'an expired session gets 401 NOT_AUTHENTICATED, not a Google error',
+      expiredCall.status === 401 && expiredCall.body?.code === 'NOT_AUTHENTICATED',
+      `got ${expiredCall.status} ${JSON.stringify(expiredCall.body)}`
+    );
+    assert('an expired session is dropped', getSessionService(expired.id) === null);
+
+    const nearlyExpired = signedIn(30 * 1000);
+    assert('a token with under a minute left is treated as expired', !nearlyExpired.service.hasSession());
+
+    const leaving = signedIn(HOUR);
+    const revoked = stubRevoke(leaving.service);
+    const logout = await call(port, 'POST', '/auth/logout', { Cookie: `tuneit_sid=${leaving.id}` });
+    assert('logout succeeds', logout.status === 200, `got ${logout.status}`);
+    assert('logout revokes the Google token', revoked.length === 1 && revoked[0] === `at-${leaving.id}`, JSON.stringify(revoked));
+    assert('logout forgets the session', getSessionService(leaving.id) === null);
+    assert('logout forgets the token', !credentialsOf(leaving.service).access_token);
+
+    const unreachable = signedIn(HOUR);
+    stubRevoke(unreachable.service, true);
+    const logoutOffline = await call(port, 'POST', '/auth/logout', { Cookie: `tuneit_sid=${unreachable.id}` });
+    assert('logout still succeeds when Google cannot be reached', logoutOffline.status === 200, `got ${logoutOffline.status}`);
+    assert('...and the session is still forgotten', getSessionService(unreachable.id) === null);
+
+    const earlier = signedIn(HOUR);
+    const revokedOnRelogin = stubRevoke(earlier.service);
+    const relogin = await call(port, 'GET', '/auth/login', { Cookie: `tuneit_sid=${earlier.id}` });
+    assert('signing in again revokes the earlier token', revokedOnRelogin.length === 1, JSON.stringify(revokedOnRelogin));
+    assert('signing in again issues a new session', cookieFrom(relogin) !== `tuneit_sid=${earlier.id}`);
+
+    const kept = signedIn(HOUR);
+    const pendingId = `smoke-pending-${Math.random().toString(36).slice(2)}`;
+    initSession(pendingId);
+    const later = Date.now() + 16 * 60 * 1000;
+    sweepExpiredSessions(later);
+    assert('the sweep drops a login never completed at Google', getSessionService(pendingId) === null);
+    assert('the sweep keeps a signed-in session whose token is still good', getSessionService(kept.id) !== null);
+    sweepExpiredSessions(Date.now() + 2 * HOUR);
+    assert('the sweep drops a session once its token has expired', getSessionService(kept.id) === null);
+
+    // Google answers 401 once a token is expired or revoked mid-request.
+    let sent: { status: number; body: any } | null = null;
+    const fakeRes: any = {
+      status(code: number) {
+        return { json: (body: any) => { sent = { status: code, body }; } };
+      },
+    };
+    const quiet = console.error;
+    console.error = () => {};
+    handleControllerError(fakeRes, Object.assign(new Error('Invalid Credentials'), { response: { status: 401 } }), 'smoke');
+    console.error = quiet;
+    assert(
+      "Google's 401 reaches the browser as signed out",
+      sent !== null && (sent as any).status === 401 && (sent as any).body?.code === 'NOT_AUTHENTICATED',
+      JSON.stringify(sent)
     );
 
     console.log('\nCallback hardening');

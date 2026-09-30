@@ -3,14 +3,16 @@ import { getOrAnalyzeTrack } from '../services/trackCacheService';
 import { checkAndIncrementExportLimit } from '../utils/exportRateLimiter';
 import { googleConfig } from '../config/ytmusic';
 import { handleControllerError } from '../utils/errorHandler';
-import { startSession, clearSessionCookie } from '../middleware/session';
-import { getSessionService, destroySession } from '../services/sessionStore';
+import { startSession, clearSessionCookie, setSessionCookie } from '../middleware/session';
+import { getSessionService, endSession } from '../services/sessionStore';
 
 export const login = async (req: Request, res: Response) => {
   try {
     // Every login attempt gets a fresh session id. It travels to Google as the
     // OAuth `state` parameter, which both binds the callback to this browser
-    // and doubles as CSRF protection.
+    // and doubles as CSRF protection. Any earlier session in this browser is
+    // signed out first, so its token is revoked rather than left to expire.
+    await endSession(req.sessionId);
     const { sessionId, service } = startSession(res);
     res.redirect(service.getAuthUrl(sessionId));
   } catch (err: any) {
@@ -45,6 +47,7 @@ export const callback = async (req: Request, res: Response) => {
 
   try {
     await service.handleCallback(code);
+    setSessionCookie(res, sessionId, (service.getExpiresAt() ?? Date.now()) - Date.now());
     return res.redirect(`${googleConfig.frontendUrl}/playlists`);
   } catch (err: any) {
     console.error('[YtMusicController] Google token exchange failed:', err?.message || err);
@@ -55,11 +58,16 @@ export const callback = async (req: Request, res: Response) => {
 /** Lets the frontend render the right state without triggering a 401 in the console. */
 export const authStatus = async (req: Request, res: Response) => {
   const authenticated = !!req.ytmusic?.hasSession();
-  res.json({ authenticated, loginUrl: '/auth/login' });
+  res.json({
+    authenticated,
+    loginUrl: '/auth/login',
+    // When the temporary sign-in ends (ms since epoch), so the UI can say so.
+    expiresAt: authenticated ? req.ytmusic!.getExpiresAt() : null,
+  });
 };
 
 export const logout = async (req: Request, res: Response) => {
-  destroySession(req.sessionId);
+  await endSession(req.sessionId);
   clearSessionCookie(res);
   res.json({ message: 'Signed out' });
 };
@@ -111,9 +119,18 @@ export const exportPlaylist = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Every videoId must be a non-empty string' });
   }
 
-  // Rate limit per session (falls back to IP for clients without a cookie),
-  // so one visitor cannot burn the whole YouTube write quota.
+  // Rate limit per YouTube account, so one visitor cannot burn the whole write
+  // quota. Keying on the session let a fresh sign-in reset the count; the
+  // account key is a hash of the channel id, held in memory only. Falls back to
+  // the session, then the IP, if the channel lookup fails.
+  let accountKey: string | null = null;
+  try {
+    accountKey = await req.ytmusic!.getAccountKey();
+  } catch (err: any) {
+    console.warn('[YtMusicController] Could not resolve account for the export limit:', err?.message || err);
+  }
   const rateKey =
+    (accountKey && `account:${accountKey}`) ||
     req.sessionId ||
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
     req.socket.remoteAddress ||
