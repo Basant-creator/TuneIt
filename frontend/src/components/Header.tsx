@@ -27,6 +27,22 @@ export function Header({
   const router = useRouter();
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
+
+  // Sign-in is temporary, and signing out revokes it at Google straight away
+  // (the backend's /auth/logout). A failed request still leaves the browser:
+  // the token expires within the hour regardless.
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await api.logout();
+    } catch (err) {
+      console.error('[Header] Sign out failed', err);
+    } finally {
+      setIsSigningOut(false);
+      router.push('/');
+    }
+  };
 
   React.useEffect(() => {
     if (!detectSession || userProfile) return;
@@ -101,7 +117,7 @@ export function Header({
         {/* User Profile / Action */}
         <div className="flex items-center gap-3 shrink-0">
           {userProfile ? (
-            <div className="flex items-center gap-2 bg-[#F8FFE5] border-2 border-black px-3 py-1.5 rounded-full select-none shadow-none shrink-0">
+            <div className="hidden sm:flex items-center gap-2 bg-[#F8FFE5] border-2 border-black px-3 py-1.5 rounded-full select-none shadow-none shrink-0">
               {userProfile.images?.[0]?.url && (
                 <TrackImage
                   src={userProfile.images[0].url}
@@ -113,7 +129,21 @@ export function Header({
                 {userProfile.display_name || 'YouTube Music'}
               </span>
             </div>
-          ) : isAuthenticated ? (
+          ) : null}
+
+          {(userProfile || isAuthenticated) && (
+            <NeoButton
+              color="white"
+              size="sm"
+              className="rounded-full"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+            >
+              {isSigningOut ? 'Signing out…' : 'Sign out'}
+            </NeoButton>
+          )}
+
+          {userProfile ? null : isAuthenticated ? (
             // Visible at every width now. It was `hidden sm:inline-flex`, so on a
             // phone the header was only a logo, with no way to sign in from it.
             <NeoButton

@@ -27,7 +27,7 @@ import type { UserProfile } from '@/types/flow';
 const HOW_IT_WORKS = [
   {
     title: 'Connect',
-    body: 'Sign in with Google and pick a YouTube Music playlist. TuneIt only holds your session for the visit — nothing about your account is saved.',
+    body: 'Sign in with Google and pick a YouTube Music playlist. Your sign-in lasts up to an hour, is never saved, and signing out revokes it straight away.',
     art: '/graphics/computer.svg',
     tilt: -1.5,
     surface: 'bg-white',
@@ -86,13 +86,16 @@ export default function Home() {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
+    // Ask the never-401 status endpoint first, and only fetch the profile for
+    // a live sign-in, so a signed-out visitor's console stays free of 401s.
     api
-      .getProfile()
+      .authStatus()
+      .then(({ authenticated }) => (authenticated ? api.getProfile() : null))
       .then((profile) => {
-        if (isMounted) setUserProfile(profile);
+        if (isMounted && profile) setUserProfile(profile);
       })
       .catch(() => {
-        // No session yet is the normal first-visit state, not an error.
+        // The sign-in ended between the two calls: signed out, not an error.
       });
 
     return () => {

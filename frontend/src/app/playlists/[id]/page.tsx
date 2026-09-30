@@ -78,6 +78,8 @@ export default function PlaylistModifierPage() {
   const [isExporting, setIsExporting] = React.useState(false);
   const [exportedPlaylistUrl, setExportedPlaylistUrl] = React.useState<string | null>(null);
   const [exportError, setExportError] = React.useState<string | null>(null);
+  /** Why the export failed: the sign-in ended, the daily limit, or anything else. */
+  const [exportErrorKind, setExportErrorKind] = React.useState<'auth' | 'limit' | 'other' | null>(null);
 
   // Fetch original tracks on mount
   React.useEffect(() => {
@@ -240,6 +242,7 @@ export default function PlaylistModifierPage() {
 
     setIsExporting(true);
     setExportError(null);
+    setExportErrorKind(null);
 
     try {
       const engineName = flowModes.find((m) => m.id === selectedMode)?.title ?? 'Optimized';
@@ -254,8 +257,18 @@ export default function PlaylistModifierPage() {
       );
     } catch (err: unknown) {
       console.error('[Export Error]', err);
-      if (err instanceof Error) setExportError(err.message);
-      else setExportError('Failed to export playlist');
+      if (err instanceof ApiError && err.isAuthError) {
+        // Sign-in is temporary (Google online access, about an hour), so this
+        // is expected on a long visit rather than a fault.
+        setExportErrorKind('auth');
+        setExportError('Your YouTube sign-in has ended. It lasts about an hour and is never saved.');
+      } else if (err instanceof ApiError && err.status === 429) {
+        setExportErrorKind('limit');
+        setExportError(err.message);
+      } else {
+        setExportErrorKind('other');
+        setExportError(err instanceof Error ? err.message : 'Failed to export playlist');
+      }
     } finally {
       setIsExporting(false);
     }
@@ -857,8 +870,20 @@ export default function PlaylistModifierPage() {
                           <span className="font-black">{exportError}</span>
                         </div>
                         <p className="text-[11px] text-slate-600">
-                          Export limit reached (3 playlists/day). You can download your playlist sequence directly as a CSV file to import into any music platform!
+                          {exportErrorKind === 'auth'
+                            ? 'Download the CSV to keep this order, or reconnect and run the flow again.'
+                            : exportErrorKind === 'limit'
+                              ? 'You can still download this sequence as a CSV and import it into any music platform.'
+                              : 'You can still download this sequence as a CSV.'}
                         </p>
+                        {exportErrorKind === 'auth' && (
+                          <a
+                            href={api.loginUrl()}
+                            className="block w-full bg-white neo-border border-black text-black font-black uppercase py-2.5 px-4 rounded-xl text-center hover:scale-[1.02] transition-transform"
+                          >
+                            Reconnect YouTube Music
+                          </a>
+                        )}
                         <button
                           onClick={handleDownloadCSV}
                           className="w-full bg-brand-yellow neo-border border-black text-black font-black uppercase py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
