@@ -8,6 +8,7 @@ import { Sticker } from '@/components/Sticker';
 import { Header } from '@/components/Header';
 import { TrackImage } from '@/components/TrackImage';
 import { api, ApiError } from '@/services/api';
+import { takeResumeTarget } from '@/utils/sequenceDraft';
 import type { Playlist, UserProfile } from '@/types/flow';
 
 export default function PlaylistsPage() {
@@ -22,7 +23,18 @@ export default function PlaylistsPage() {
     let isMounted = true;
 
     async function loadData() {
+      let resuming = false;
       try {
+        // Back from reconnecting at Google, which always lands here: return
+        // to the playlist the visitor was arranging (its sequence is kept in
+        // this tab), rather than making them find it again.
+        const resume = takeResumeTarget();
+        if (resume && (await api.authStatus()).authenticated) {
+          resuming = true; // keep the loader up until the playlist page opens
+          router.replace(`/playlists/${resume}`);
+          return;
+        }
+
         // Profile and playlists are independent; fetch them together.
         const [profile, items] = await Promise.all([api.getProfile(), api.getPlaylists()]);
         if (!isMounted) return;
@@ -40,7 +52,7 @@ export default function PlaylistsPage() {
           );
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted && !resuming) setLoading(false);
       }
     }
 

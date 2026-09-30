@@ -31,6 +31,14 @@ import { flowModes } from '@/data/homeData';
 import { decodeHtmlEntities } from '@/utils/decodeHtml';
 import { downloadPlaylistCSV } from '@/utils/csvExporter';
 import { api, ApiError } from '@/services/api';
+import {
+  clearDraft,
+  draftMatchesPlaylist,
+  loadDraft,
+  saveDraft,
+  setResumeTarget,
+  sourceIdsOf,
+} from '@/utils/sequenceDraft';
 import type {
   FlowEngineResponse,
   FlowMode,
@@ -81,6 +89,13 @@ export default function PlaylistModifierPage() {
   /** Why the export failed: the sign-in ended, the daily limit, or anything else. */
   const [exportErrorKind, setExportErrorKind] = React.useState<'auth' | 'limit' | 'other' | null>(null);
 
+  // Whether an arranged sequence was put back after a reconnect or reload
+  // ('restored'), or dropped because the playlist changed since ('stale').
+  const [draftNotice, setDraftNotice] = React.useState<'restored' | 'stale' | null>(null);
+
+  /** Before leaving for Google, remember to come back to this playlist. */
+  const rememberToResume = React.useCallback(() => setResumeTarget(playlistId), [playlistId]);
+
   // Fetch original tracks on mount
   React.useEffect(() => {
     let isMounted = true;
@@ -93,6 +108,25 @@ export default function PlaylistModifierPage() {
         if (isMounted) {
           setOriginalTracks(rawTracks);
           setDisplayTracks(rawTracks);
+
+          // Put back a sequence arranged earlier in this tab — typically before
+          // the hour-long sign-in ran out and the visitor reconnected — but only
+          // if the playlist on YouTube still holds exactly the same tracks.
+          const draft = loadDraft(playlistId);
+          if (draft && draftMatchesPlaylist(draft, rawTracks)) {
+            setSelectedMode(draft.mode);
+            setFlowResult(draft.flowResult);
+            setDisplayTracks(draft.tracks);
+            setHarshTracks(draft.harshTracks);
+            setIsManuallyReordered(draft.manuallyReordered);
+            setExportTitle(draft.exportTitle);
+            setIsComplete(true);
+            setActiveSequenceTab('optimized');
+            setDraftNotice('restored');
+          } else if (draft) {
+            clearDraft(playlistId);
+            setDraftNotice('stale');
+          }
         }
       } catch (err: unknown) {
         console.error(err);
@@ -114,6 +148,35 @@ export default function PlaylistModifierPage() {
       isMounted = false;
     };
   }, [playlistId]);
+
+  // Keep the arranged sequence in this tab so a reconnect cannot lose it.
+  // Debounced: the export title changes on every keystroke.
+  React.useEffect(() => {
+    if (!isComplete || !flowResult || isGenerating) return;
+    const timer = setTimeout(() => {
+      saveDraft({
+        playlistId,
+        mode: flowResult.mode,
+        flowResult,
+        tracks: displayTracks,
+        harshTracks,
+        manuallyReordered: isManuallyReordered,
+        exportTitle,
+        sourceIds: sourceIdsOf(originalTracks),
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [
+    playlistId,
+    isComplete,
+    isGenerating,
+    flowResult,
+    displayTracks,
+    harshTracks,
+    isManuallyReordered,
+    exportTitle,
+    originalTracks,
+  ]);
 
   // Handle shuffling illusion during generation
   React.useEffect(() => {
@@ -295,10 +358,68 @@ export default function PlaylistModifierPage() {
             <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
             <h2 className="text-xl font-black uppercase text-red-600 mb-2">Error</h2>
             <p className="font-mono font-bold text-slate-700">{error}</p>
-            <NeoButton color="white" className="mt-6" onClick={() => window.location.reload()}>Retry</NeoButton>
+            {needsAuth ? (
+              <a
+                href={api.loginUrl()}
+                onClick={rememberToResume}
+                className="mt-6 bg-brand-yellow neo-border border-black rounded-xl py-2.5 px-5 font-black uppercase text-sm text-black"
+              >
+                Reconnect YouTube Music
+              </a>
+            ) : (
+              <NeoButton color="white" className="mt-6" onClick={() => window.location.reload()}>Retry</NeoButton>
+            )}
+            {needsAuth && (
+              <p className="font-mono text-[11px] text-slate-500 mt-3 max-w-sm">
+                Anything you arranged in this tab comes back after you reconnect.
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex flex-col w-full">
+            {draftNotice && (
+              <div
+                role="status"
+                className={cn(
+                  'mb-6 neo-border border-black rounded-2xl px-4 py-3 font-mono text-xs font-bold flex flex-wrap items-center justify-between gap-3',
+                  draftNotice === 'restored' ? 'bg-green-100 text-green-900' : 'bg-amber-100 text-amber-900'
+                )}
+              >
+                <span>
+                  {draftNotice === 'restored'
+                    ? 'Picked up where you left off: this is the sequence you arranged before.'
+                    : 'This playlist changed on YouTube since you arranged it, so the saved sequence was dropped.'}
+                </span>
+                <span className="flex gap-2">
+                  {draftNotice === 'restored' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearDraft(playlistId);
+                        setDraftNotice(null);
+                        setIsComplete(false);
+                        setDisplayTracks(originalTracks);
+                        setHarshTracks([]);
+                        setFlowResult(null);
+                        setIsManuallyReordered(false);
+                      }}
+                      className="bg-white neo-border-xs border-black rounded-lg px-2.5 py-1 font-black uppercase text-[10px] text-black"
+                    >
+                      Start over
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDraftNotice(null)}
+                    aria-label="Dismiss"
+                    className="bg-white neo-border-xs border-black rounded-lg px-2 py-1 font-black text-[10px] text-black"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              </div>
+            )}
+
             {/* Top Level Pill Navigation Bar (Single Straight Line) when Completed */}
             {isComplete && (
               <motion.div
@@ -462,6 +583,7 @@ export default function PlaylistModifierPage() {
                           {needsAuth && (
                             <a
                               href={api.loginUrl()}
+                              onClick={rememberToResume}
                               className="block bg-brand-yellow border-2 border-black rounded-lg py-1.5 text-center text-black uppercase"
                             >
                               Reconnect YouTube Music
@@ -532,6 +654,8 @@ export default function PlaylistModifierPage() {
                         color="white"
                         className="w-full justify-center"
                         onClick={() => {
+                          clearDraft(playlistId);
+                          setDraftNotice(null);
                           setIsComplete(false);
                           setDisplayTracks(originalTracks);
                           setHarshTracks([]);
@@ -879,6 +1003,7 @@ export default function PlaylistModifierPage() {
                         {exportErrorKind === 'auth' && (
                           <a
                             href={api.loginUrl()}
+                            onClick={rememberToResume}
                             className="block w-full bg-white neo-border border-black text-black font-black uppercase py-2.5 px-4 rounded-xl text-center hover:scale-[1.02] transition-transform"
                           >
                             Reconnect YouTube Music

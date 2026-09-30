@@ -29,8 +29,10 @@ TuneIt is two deployables that talk over HTTP with a session cookie:
 > token that expires after about an hour, and no refresh token (one is dropped
 > even if Google sends it). Nothing about the account is written to disk or the
 > database. Signing out, or signing in again, revokes the token at Google; an
-> abandoned session simply expires. After an hour a visitor signs in again, and
-> any unexported sequence can still be downloaded as CSV.
+> abandoned session simply expires. After an hour a visitor signs in again; the
+> sequence they arranged is kept in that browser tab's `sessionStorage` (track
+> data only, gone when the tab closes) and comes back after reconnecting, as
+> long as the playlist on YouTube has not changed meanwhile.
 
 ---
 
@@ -183,7 +185,8 @@ These are real constraints of the current build, not TODOs hidden in code.
    `backend/src/services/sessionStore.ts` holds each visitor's access token in a
    `Map` until Google expires it. Consequences:
    - A backend restart signs everyone out.
-   - A visit longer than an hour needs a second sign-in.
+   - A visit longer than an hour needs a second sign-in. The arranged sequence
+     survives it (`frontend/src/utils/sequenceDraft.ts`).
    - **Running more than one replica breaks login** — the callback may land on a
      different instance than the one that issued the session. Either pin to a
      single instance or move the store to Redis/Postgres before scaling out.
