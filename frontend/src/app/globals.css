@@ -281,3 +281,88 @@ h2, h3, h4, h5, h6 {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0px #000000;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Accessibility                                                              */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Keyboard focus. The app shipped with no focus-visible styles at all, so
+ * tabbing through it gave almost no indication of where you were. A thick,
+ * offset black ring is the brutalist answer: it reads on every brand colour
+ * and never collides with the hard offset shadows, because outline does not
+ * participate in box-shadow.
+ *
+ * :where() keeps specificity at zero so component styles still win.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible,
+.neo-focus:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 3px;
+  /* No border-radius here: outlines already follow each element's own radius,
+     and setting one would reshape a rounded-2xl button the moment it gains
+     focus. */
+}
+
+/* Mouse and touch users keep the clean look. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip link: invisible until focused, then a stamped sticker in the corner. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  background: var(--brand-yellow);
+  color: #000000;
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0 0 #000000;
+  border-radius: 0.6rem;
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: top 150ms ease-out;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Balanced headings avoid a single orphaned word on the last line. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Tabular figures keep BPM and energy columns from jittering as values change. */
+.tabular-nums,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Reduced motion. framer-motion honours the OS setting via <MotionConfig>, but
+ * the CSS keyframe doodles and the shimmer run outside it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-doodle-1,
+  .animate-doodle-2,
+  .shimmer-placeholder,
+  .animate-pulse {
+    animation: none !important;
+  }
+  /* Spinners are deliberately left running: they are status, not decoration,
+     and a frozen spinner reads as a hung page. */
+  html {
+    scroll-behavior: auto !important;
+  }
+}

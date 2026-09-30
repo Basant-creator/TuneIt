@@ -21,15 +21,10 @@ export function Sticker({
   pin = false,
   size = 'sm',
 }: StickerProps) {
-  const [randomTilt] = React.useState(() =>
-    rotation !== undefined
-      ? rotation
-      : typeof window !== 'undefined'
-      ? (Math.random() - 0.5) * 8
-      : 0
-  );
-
-  const tilt = rotation !== undefined ? rotation : randomTilt;
+  // Deterministic on purpose. A Math.random() default rendered 0 on the server
+  // and a different value on the client, which is a hydration mismatch waiting
+  // for the first <Sticker> that omits `rotation`.
+  const tilt = rotation ?? -2;
 
   const colorMap = {
     pink: 'bg-brand-pink text-white border-black',

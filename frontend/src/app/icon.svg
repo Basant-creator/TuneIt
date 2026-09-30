@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Hard offset shadow, then the yellow tile: the site's own button, shrunk. -->
+  <rect x="9" y="9" width="50" height="50" rx="11" fill="#000"/>
+  <rect x="4" y="4" width="50" height="50" rx="11" fill="#FFDD00" stroke="#000" stroke-width="4"/>
+  <!-- Bold T -->
+  <path d="M15 17 H43 V25 H33 V46 H25 V25 H15 Z" fill="#000"/>
+  <!-- The logo's bolt -->
+  <path d="M44 31 L37 42 H42 L39 51 L48 38 H43 L46 31 Z" fill="#FF006E" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
+</svg>

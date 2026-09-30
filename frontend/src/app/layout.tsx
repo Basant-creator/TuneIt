@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Special_Gothic_Expanded_One, Azeret_Mono, Caveat } from 'next/font/google';
 import { Providers } from '@/components/providers';
+import { env } from '@/lib/env';
 import './globals.css';
 
 const specialGothic = Special_Gothic_Expanded_One({
@@ -23,10 +24,33 @@ const caveat = Caveat({
   weight: ['400', '700'],
 });
 
+const DESCRIPTION =
+  'Your playlist has great songs in a terrible order. TuneIt reads the tempo and energy of every track and reorders them so each transition lands.';
+
 export const metadata: Metadata = {
-  title: 'TuneIt | Fix The Flow of Your Music Playlists',
-  description:
-    'Your playlist has songs. It does not have flow. TuneIt transforms chaotic lists into intentional listening journeys using smart energy progression.',
+  metadataBase: new URL(env.appUrl),
+  title: {
+    default: 'TuneIt — fix the flow of your playlist',
+    template: '%s · TuneIt',
+  },
+  description: DESCRIPTION,
+  applicationName: 'TuneIt',
+  openGraph: {
+    type: 'website',
+    siteName: 'TuneIt',
+    title: "TuneIt — it's not the songs, it's the order",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "TuneIt — it's not the songs, it's the order",
+    description: DESCRIPTION,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#F8FFE5',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({
@@ -41,6 +65,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="bg-[#F8FFE5] text-black flex min-h-full flex-col font-mono selection:bg-[#FFDD00]">
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <Providers>{children}</Providers>
       </body>
     </html>
