@@ -32,6 +32,12 @@ jobs:
       - name: API smoke test
         run: npm run verify:api
 
+      # The landing-page sandbox ships precomputed engine runs
+      # (frontend/src/data/sandboxEngineResults.json). Fail if an engine
+      # change left them stale: run `npm run generate:sandbox` to refresh.
+      - name: Sandbox results match the engines
+        run: npm run verify:sandbox
+
       - name: Build
         run: npx tsc
 

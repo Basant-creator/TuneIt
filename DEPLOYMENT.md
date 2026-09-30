@@ -154,12 +154,13 @@ cd frontend && npm install && npm run dev
 cd backend
 npm run verify:engines   # all 4 engines against the frontend contract
 npm run verify:api       # routing, auth gating, session isolation, CORS
-npm run verify           # both
+npm run verify:sandbox   # landing-page sandbox results match the engines
+npm run verify           # all three
 
 cd ../frontend
 npm run typecheck
 npx eslint src --max-warnings=0
-npm test                 # 62 unit + component tests (vitest + testing-library)
+npm test                 # unit + component tests (vitest + testing-library)
 npm run build
 ```
 
@@ -200,8 +201,8 @@ These are real constraints of the current build, not TODOs hidden in code.
    several Gemini round trips. Results are cached in Postgres by
    `artist:::title`, so repeat runs are fast.
 8. **Frontend tests cover units and components, not journeys.** `npm test` runs
-   62 vitest/testing-library tests over the API client, CSV export, the stats
-   panel, the preview modal and the track list. There is no end-to-end suite, so
+   vitest/testing-library tests over the API client, CSV export, the stats
+   panel, the preview modal, the track list and the landing-page sandbox. There is no end-to-end suite, so
    the signed-in OAuth journey is still only verified by hand.
 9. **Long playlists render windowed.** Above 60 tracks the list switches to
    virtualized rows and drops the per-row reorder animation
