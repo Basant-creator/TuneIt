@@ -91,7 +91,7 @@ export function HeroVisualization() {
           'absolute top-4 left-4 neo-border px-3 py-1 text-xs font-black uppercase rounded-lg shadow-sm z-30 transition-colors duration-200',
           flowFixed ? 'bg-brand-blue text-black' : 'bg-brand-orange text-white'
         )}>
-          {flowFixed ? 'Flow Fixed!' : 'Chaotic Arrangement'}
+          {flowFixed ? 'Flow fixed' : 'Chaotic order'}
         </span>
 
         {/* Centerpiece Song Sequence Shell */}
@@ -208,7 +208,7 @@ export function HeroVisualization() {
           {flowFixed ? (
             <>
               <Check className="w-5 h-5 stroke-[3px]" />
-              Flow Fixed! Reset
+              Shuffle it back
             </>
           ) : (
             <>
@@ -218,7 +218,7 @@ export function HeroVisualization() {
           )}
         </NeoButton>
         <span className="font-handwritten text-lg text-slate-600 tracking-wide rotate-[-1deg]">
-          {flowFixed ? 'Pure listening bliss!' : 'Click to rearrange chaotic tracks!'}
+          {flowFixed ? 'Every jump smoothed out' : 'Tap the button to reorder these'}
         </span>
       </div>
     </div>

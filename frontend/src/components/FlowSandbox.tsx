@@ -58,7 +58,7 @@ function optimizeTrackOrder(tracks: Track[], modeId: string): Track[] {
 }
 
 export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: FlowSandboxProps) {
-  // Filter active preset tracks based on current Journey category
+  // Filter active preset tracks based on the current mode
   const categoryTracks = React.useMemo(() => {
     return PRESET_TRACKS.filter((track) => track.category === modeId);
   }, [modeId]);
@@ -82,7 +82,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
     return optimizeTrackOrder(selectedTracksInOrder, modeId);
   }, [selectedTracksInOrder, modeId]);
 
-  // Overall journey metrics, feedback summary, and concluding sentence
+  // Measured metrics, a data-driven summary, and a one-line verdict
   const stats = React.useMemo(() => {
     if (selectedTracksInOrder.length !== 5 || optimizedTracks.length !== 5) return null;
 
@@ -93,83 +93,89 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
 
     const flowScore = Math.max(30, Math.min(100, Math.round(totalScore / 4)));
 
+    // Every figure below is measured from the five tracks actually chosen.
+    // This block used to show invented "metrics": Atmosphere and Variety were
+    // the constants 88 and 95, and Immersion, Replay Value and Flow State were
+    // the same flow score relabelled with different fudge factors.
+    const e = optimizedTracks.map((t) => t.energy);
+    const bpm = optimizedTracks.map((t) => getEffectiveBpm(t.bpm));
+    const steps = e.slice(1).map((v, i) => v - e[i]);
+    const bpmSteps = bpm.slice(1).map((v, i) => Math.abs(v - bpm[i]));
+    const transitions = steps.length;
+    const pct = (n: number) => Math.round((n / transitions) * 100);
+    const range = Math.max(...e) - Math.min(...e);
+
+    const smoothness = Math.max(0, Math.round(100 - (steps.reduce((a, d) => a + Math.abs(d), 0) / transitions) * 100));
+    // ~6 BPM is roughly where a beat-matched transition stops sounding matched.
+    const tempoMatchCount = bpmSteps.filter((d) => d <= 6).length;
+
     let metrics: { name: string; value: number }[] = [];
     let concludingSentence = '';
     let feedbackMessage = '';
 
+    const fmt = (n: number) => (n >= 0 ? '+' : '') + n.toFixed(2);
+
     if (modeId === 'bu') {
-      const energyAscending = optimizedTracks[4].energy - optimizedTracks[0].energy;
-      const progressionVal = Math.max(40, Math.min(100, Math.round(75 + energyAscending * 50)));
-      const confidenceVal = Math.round((optimizedTracks.reduce((acc, t) => acc + t.energy, 0) / 5) * 100);
-      const payoffVal = Math.round(optimizedTracks[4].energy * 100);
-      const momentumVal = Math.min(
-        100,
-        Math.round(flowScore * 0.9 + (optimizedTracks[4].bpm > optimizedTracks[0].bpm ? 10 : 0))
-      );
-
+      const rising = steps.filter((d) => d > 0).length;
+      // Share of the available climb actually achieved, first track to last.
+      const climb = range === 0 ? 0 : Math.max(0, Math.min(100, Math.round(((e[e.length - 1] - e[0]) / range) * 100)));
       metrics = [
-        { name: 'Momentum', value: momentumVal },
-        { name: 'Confidence', value: confidenceVal },
-        { name: 'Progression', value: progressionVal },
-        { name: 'Payoff', value: payoffVal },
+        { name: 'Smoothness', value: smoothness },
+        { name: 'Rising steps', value: pct(rising) },
+        { name: 'Climb achieved', value: climb },
+        { name: 'Tempo matched', value: pct(tempoMatchCount) },
       ];
-      feedbackMessage = 'Every song makes you feel stronger, more confident, and more energetic than the previous one.';
-      concludingSentence = 'You walk out of this curve standing a little taller than when you entered.';
+      feedbackMessage = `${rising} of ${transitions} transitions step up, and it finishes ${fmt(e[e.length - 1] - e[0])} above where it started.`;
+      concludingSentence = rising === transitions ? 'A clean climb, no step backwards.' : 'A climb with a breather or two, which is the point.';
     } else if (modeId === 'df') {
-      const avgEnergy = optimizedTracks.reduce((acc, t) => acc + t.energy, 0) / 5;
-      const immersionVal = Math.round(flowScore * 0.95 + 5);
-      const smoothnessVal = flowScore;
-      const depthVal = Math.round((1 - avgEnergy) * 100);
-      const flowStateVal = Math.round((smoothnessVal + immersionVal) / 2);
-
+      const gentle = steps.filter((d) => Math.abs(d) <= 0.15).length;
+      const steadiness = Math.max(0, Math.round(100 - range * 100));
       metrics = [
-        { name: 'Immersion', value: immersionVal },
-        { name: 'Smoothness', value: smoothnessVal },
-        { name: 'Ambient Depth', value: depthVal },
-        { name: 'Flow State', value: flowStateVal },
+        { name: 'Smoothness', value: smoothness },
+        { name: 'Gentle transitions', value: pct(gentle) },
+        { name: 'Energy steadiness', value: steadiness },
+        { name: 'Tempo matched', value: pct(tempoMatchCount) },
       ];
-      feedbackMessage = 'Smooth, atmospheric transitions that preserve mood and ambient energy levels without sharp drops.';
-      concludingSentence = 'A journey that keeps you perfectly suspended in time.';
+      feedbackMessage = `${gentle} of ${transitions} transitions move energy by 0.15 or less, and the whole mix spans ${range.toFixed(2)}.`;
+      concludingSentence = range <= 0.25 ? 'Level enough to disappear into.' : 'Some movement in here — a wider mix than Drift usually likes.';
     } else if (modeId === 'cm') {
-      const targets = [0.65, 0.75, 0.85, 0.60, 0.80];
-      let matchCount = 0;
-      for (let i = 0; i < 5; i++) {
-        if (Math.abs(optimizedTracks[i].energy - targets[i]) <= 0.15) matchCount++;
-      }
-      const narrativeVal = Math.round(flowScore * 0.85 + matchCount * 3);
-      const atmosphereVal = 88;
-      const energyRange =
-        Math.max(...optimizedTracks.map((t) => t.energy)) - Math.min(...optimizedTracks.map((t) => t.energy));
-      const emotionalArcVal = Math.round(50 + energyRange * 50);
-      const continuityVal = flowScore;
-
+      const peakIdx = e.indexOf(Math.max(...e));
+      // 100 when the peak sits in the middle of five, falling to 0 at either end.
+      const peakCentred = Math.max(0, Math.round(100 - (Math.abs(peakIdx - 2) / 2) * 100));
+      const resolves = range === 0 ? 0 : Math.max(0, Math.min(100, Math.round(((e[peakIdx] - e[e.length - 1]) / range) * 100)));
       metrics = [
-        { name: 'Narrative', value: narrativeVal },
-        { name: 'Atmosphere', value: atmosphereVal },
-        { name: 'Emotional Arc', value: emotionalArcVal },
-        { name: 'Scene Continuity', value: continuityVal },
+        { name: 'Smoothness', value: smoothness },
+        { name: 'Peak in the middle', value: peakCentred },
+        { name: 'Comes back down', value: resolves },
+        { name: 'Tempo matched', value: pct(tempoMatchCount) },
       ];
-      feedbackMessage = 'Every transition feels like another scene in a movie, taking you through acts of a story.';
-      concludingSentence = 'A sequence that makes life feel like it was filmed on 35mm.';
+      feedbackMessage = `The peak lands on track ${peakIdx + 1} of ${e.length}, then energy settles ${fmt(e[e.length - 1] - e[peakIdx])} by the end.`;
+      concludingSentence = peakIdx > 0 && peakIdx < e.length - 1 ? 'A real middle act, with somewhere to land.' : 'The peak is at an edge, so the arc feels lopsided.';
     } else {
       // 'ph' -> Unhinged
-      let bpmDiffSum = 0;
-      for (let i = 0; i < 4; i++) {
-        bpmDiffSum += Math.abs(getEffectiveBpm(optimizedTracks[i].bpm) - getEffectiveBpm(optimizedTracks[i + 1].bpm));
-      }
-      const surpriseVal = Math.min(100, Math.round(50 + bpmDiffSum * 0.8));
-      const varietyVal = 95;
-      const chaosVal = Math.round((flowScore + surpriseVal) / 2);
-      const replayVal = Math.round(flowScore * 0.9 + 10);
-
+      // The real engine only accepts a curveball at ΔE >= 0.45, relaxing to
+      // 0.35 at most (backend/src/utils/unhingedAlgorithm.ts). Use its loosest
+      // bar rather than an easier one, so the demo cannot overstate the mode.
+      const CURVEBALL_MIN = 0.35;
+      const swings = steps.map((d, i) => ({ big: Math.abs(d) >= CURVEBALL_MIN, anchored: bpmSteps[i] <= 6 }));
+      const bigCount = swings.filter((x) => x.big).length;
+      const anchoredCount = swings.filter((x) => x.big && x.anchored).length;
+      const biggest = Math.max(...steps.map(Math.abs));
       metrics = [
-        { name: 'Surprise', value: surpriseVal },
-        { name: 'Variety', value: varietyVal },
-        { name: 'Controlled Chaos', value: chaosVal },
-        { name: 'Replay Value', value: replayVal },
+        { name: 'Big swings', value: pct(bigCount) },
+        { name: 'Swings anchored', value: bigCount === 0 ? 0 : Math.round((anchoredCount / bigCount) * 100) },
+        { name: 'Biggest swing', value: Math.round(biggest * 100) },
+        { name: 'Tempo matched', value: pct(tempoMatchCount) },
       ];
-      feedbackMessage = 'Break expectations without breaking the listening experience, escalating personality and unpredictability.';
-      concludingSentence = 'You never see the next turn coming, but you love the ride.';
+      if (range < CURVEBALL_MIN) {
+        // Say *why*: no ordering of these tracks can swing, because the set
+        // itself has no range. That is the track choice, not the sequencing.
+        feedbackMessage = `These five sit within ${range.toFixed(2)} of each other, so there is nothing to swing between — a curveball needs a jump of ${CURVEBALL_MIN} or more.`;
+        concludingSentence = 'Unhinged needs a calm track and a loud one to throw between.';
+      } else {
+        feedbackMessage = `${bigCount} of ${transitions} transitions swing energy by ${CURVEBALL_MIN} or more; ${anchoredCount} of those keep the tempo close.`;
+        concludingSentence = bigCount === 0 ? 'The range is there, but this order never uses it.' : anchoredCount === bigCount ? 'Every curveball has a tempo to land on.' : 'Some swings have nothing to hold on to.';
+      }
     }
 
     return { flowScore, metrics, feedbackMessage, concludingSentence };
@@ -252,7 +258,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
               <Info className="w-7 h-7 text-brand-pink mx-auto mb-1.5" />
               <p className="text-[11px] font-black text-slate-600 uppercase">Awaiting Playlist Construction</p>
               <p className="text-[9px] text-slate-400 mt-1 leading-normal">
-                Click {5 - selectedTrackIds.length} more track{5 - selectedTrackIds.length > 1 ? 's' : ''} to align this listening journey.
+                Click {5 - selectedTrackIds.length} more track{5 - selectedTrackIds.length > 1 ? 's' : ''} to build the mix.
               </p>
             </motion.div>
           ) : (
@@ -274,7 +280,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                   </span>
                   {stats && (
                     <span className="bg-brand-blue text-black neo-border-sm rounded px-1.5 py-0.5 text-[8.5px] font-black font-mono">
-                      Journey Match: {stats.flowScore}%
+                      Match {stats.flowScore}%
                     </span>
                   )}
                 </div>
@@ -287,7 +293,7 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
                     const transScore = hasNext ? getTransitionScore(track, nextTrack, modeId, idx) : 100;
 
                     let scoreColor = 'bg-green-500';
-                    let textStatus = 'Seamless Blend';
+                    let textStatus = 'Clean blend';
                     if (transScore < 75) {
                       scoreColor = 'bg-brand-orange';
                       textStatus = 'Tension Bridge';

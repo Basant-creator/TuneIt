@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { cn } from '@/utils/cn';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Gauge, ArrowRight } from 'lucide-react';
+import { smoothnessScore } from '@/utils/smoothness';
 import { TrackImage } from './TrackImage';
 
 interface TrackItem {
@@ -33,6 +34,9 @@ export function PlaylistCard({
   onFixFlow,
 }: PlaylistCardProps) {
   const isChaotic = variant === 'chaotic';
+  // Computed from the tracks shown, with the backend's formula. This used to be
+  // a hard-coded "Flow Score: 98%" regardless of what was in the list.
+  const score = smoothnessScore(tracks.map((t) => t.energy));
 
   return (
     <div
@@ -50,15 +54,19 @@ export function PlaylistCard({
             isChaotic ? 'bg-brand-orange text-white' : 'bg-brand-yellow text-black'
           )}
         >
-          {isChaotic ? 'Chaotic Order' : 'Optimized Journey'}
+          {isChaotic ? 'Chaotic order' : 'Rise order'}
         </span>
-        
-        {!isChaotic && (
-          <div className="flex items-center gap-1 text-brand-yellow">
-            <Sparkles className="w-4 h-4 fill-current animate-pulse" />
-            <span className="text-xs font-extrabold uppercase">Flow Score: 98%</span>
-          </div>
-        )}
+
+        <div
+          className={cn(
+            'flex items-center gap-1 font-mono tabular-nums',
+            isChaotic ? 'text-brand-orange' : 'text-brand-yellow'
+          )}
+          title="100 minus the average energy jump between tracks. Same formula the engine uses."
+        >
+          <Gauge className="w-4 h-4" aria-hidden="true" />
+          <span className="text-xs font-extrabold uppercase">Flow score {score}</span>
+        </div>
       </div>
 
       {/* Title */}

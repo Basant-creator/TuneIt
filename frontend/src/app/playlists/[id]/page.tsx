@@ -271,7 +271,7 @@ export default function PlaylistModifierPage() {
         </NeoButton>
       </header>
 
-      <main className="max-w-6xl mx-auto py-10 px-6">
+      <main id="main" tabIndex={-1} className="outline-none max-w-6xl mx-auto py-10 px-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4 mt-20">
             <Loader2 className="w-12 h-12 animate-spin text-brand-blue" />
@@ -386,7 +386,7 @@ export default function PlaylistModifierPage() {
                   {isComplete && (
                     <div className="absolute -top-6 -right-6 z-10">
                       <Sticker color="pink" rotation={10} size="sm">
-                        PERFECTED!
+                        Sorted
                       </Sticker>
                     </div>
                   )}
@@ -481,7 +481,7 @@ export default function PlaylistModifierPage() {
                       <div className="bg-brand-blue/20 border-2 border-brand-blue p-4 rounded-xl text-center">
                         <h4 className="font-black uppercase text-brand-blue flex items-center justify-center gap-2">
                           <Sparkles className="w-4 h-4" />
-                          Flow Applied Successfully
+                          {flowResult?.label ?? 'Flow'} order applied
                         </h4>
                       </div>
 
@@ -619,7 +619,12 @@ export default function PlaylistModifierPage() {
                         <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
                           <div className="bg-white/80 neo-border border-black p-6 rounded-3xl flex flex-col items-center shadow-lg backdrop-blur-sm pointer-events-auto">
                             <SpinningBlocks />
-                            <p className="mt-4 font-black uppercase text-brand-pink tracking-widest text-sm animate-pulse">Syncing Vibes...</p>
+                            <p className="mt-4 font-black uppercase text-brand-pink tracking-widest text-sm animate-pulse">Reading tempo &amp; energy</p>
+                            {/* No progress events come back from the server, so set an
+                                honest expectation rather than faking a progress bar. */}
+                            <p className="mt-1 font-mono text-[10px] font-bold text-slate-500 text-center max-w-[26ch]">
+                              A new playlist can take up to a minute the first time. Repeat runs are quick.
+                            </p>
                           </div>
                         </div>
                       )}
@@ -753,12 +758,12 @@ export default function PlaylistModifierPage() {
 
                     {harshTracks.length === 0 ? (
                       <p className="font-mono text-xs font-bold text-slate-600 bg-white p-4 rounded-xl border border-red-200">
-                        ✨ 0 Harsh Transitions Found! All tracks fit the {flowModes.find((m) => m.id === selectedMode)?.title || 'Selected'} vibe profile naturally.
+                        Nothing removed. Every track fits the {flowModes.find((m) => m.id === selectedMode)?.title || 'selected'} profile.
                       </p>
                     ) : (
                       <>
                         <p className="font-mono text-xs font-bold text-red-600 mb-4">
-                          These tracks completely ruined the {flowModes.find((m) => m.id === selectedMode)?.title} aesthetic. We removed them to save your flow.
+                          These didn&apos;t fit the {flowModes.find((m) => m.id === selectedMode)?.title} profile, so they sit out this run. Each one says why.
                         </p>
 
                         <div data-lenis-prevent="true" className="max-h-[30vh] overflow-y-auto pr-2 overscroll-contain">
@@ -902,7 +907,7 @@ export default function PlaylistModifierPage() {
                   </div>
 
                   <div>
-                    <h2 className="text-2xl font-black uppercase text-slate-900">Playlist Exported!</h2>
+                    <h2 className="text-2xl font-black uppercase text-slate-900">Saved to YouTube Music</h2>
                     <p className="font-mono text-xs font-bold text-slate-500 mt-1">
                       &quot;{exportTitle}&quot; was successfully created on YouTube Music.
                     </p>
