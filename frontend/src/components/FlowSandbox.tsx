@@ -3,9 +3,13 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/utils/cn';
-import { Check, Info } from 'lucide-react';
-import { Track, PRESET_TRACKS } from '@/data/presetTracks';
-import { getTransitionPenalty, getTransitionScore, getEffectiveBpm } from '@/utils/flowScoring';
+import { Check, Info, Minus, X } from 'lucide-react';
+import { PRESET_TRACKS } from '@/data/presetTracks';
+import {
+  scoreSelection,
+  segmentLabel,
+  type SandboxMode,
+} from '@/utils/sandboxMetrics';
 import { TrackImage } from './TrackImage';
 
 interface FlowSandboxProps {
@@ -14,54 +18,52 @@ interface FlowSandboxProps {
   onChangeSelected: (ids: string[]) => void;
 }
 
-/**
- * Pure backtracking optimization function to determine optimal 5-track arrangement.
- */
-function optimizeTrackOrder(tracks: Track[], modeId: string): Track[] {
-  if (tracks.length !== 5) return tracks;
+const SEQUENCE_TITLE: Record<SandboxMode, string> = {
+  bu: 'Rise Curve Sequence',
+  df: 'Drift Flow Sequence',
+  ph: 'Unhinged Contrast Sequence',
+  cm: 'Frame Narrative Sequence',
+};
 
-  let bestPerm: Track[] = [...tracks];
-  let bestPenalty = Infinity;
-
-  const currentPerm: Track[] = [];
-  const used = new Array(5).fill(false);
-
-  const backtrack = (idx: number, currentPenalty: number) => {
-    if (currentPenalty >= bestPenalty) return;
-
-    if (idx === 5) {
-      bestPenalty = currentPenalty;
-      bestPerm = [...currentPerm];
-      return;
-    }
-
-    for (let i = 0; i < 5; i++) {
-      if (used[i]) continue;
-
-      let nextPenalty = 0;
-      if (idx > 0) {
-        nextPenalty = getTransitionPenalty(currentPerm[idx - 1], tracks[i], modeId, idx);
-      }
-
-      used[i] = true;
-      currentPerm.push(tracks[i]);
-
-      backtrack(idx + 1, currentPenalty + nextPenalty);
-
-      currentPerm.pop();
-      used[i] = false;
-    }
-  };
-
-  backtrack(0, 0);
-  return bestPerm;
+/** Describes one transition from the energy change the engine reported. */
+function describeStep(
+  dE: number,
+  nextSegment: string | null
+): { label: string; color: string } {
+  const size = Math.abs(dE);
+  if (nextSegment === 'CURVEBALL')
+    return { label: 'Curveball', color: 'bg-brand-pink' };
+  if (size <= 0.1) return { label: 'Gentle blend', color: 'bg-green-500' };
+  if (size <= 0.25)
+    return {
+      label: dE > 0 ? 'Step up' : 'Step down',
+      color: 'bg-brand-yellow',
+    };
+  if (size < 0.35)
+    return {
+      label: dE > 0 ? 'Big step up' : 'Big step down',
+      color: 'bg-brand-orange',
+    };
+  return { label: 'Jump', color: 'bg-brand-pink' };
 }
 
-export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: FlowSandboxProps) {
-  // Filter active preset tracks based on the current mode
-  const categoryTracks = React.useMemo(() => {
-    return PRESET_TRACKS.filter((track) => track.category === modeId);
-  }, [modeId]);
+/**
+ * The sandbox on each mode card. It shows what the real engine does with the
+ * chosen tracks: the order, each track's role in that order, and anything the
+ * engine set aside. All of it comes from sandboxEngineResults.json, which the
+ * backend generates by running the actual engines over every selection.
+ */
+export function FlowSandbox({
+  modeId,
+  selectedTrackIds,
+  onChangeSelected,
+}: FlowSandboxProps) {
+  const mode = modeId as SandboxMode;
+
+  const categoryTracks = React.useMemo(
+    () => PRESET_TRACKS.filter((track) => track.category === mode),
+    [mode]
+  );
 
   const toggleTrack = (id: string) => {
     if (selectedTrackIds.includes(id)) {
@@ -71,136 +73,40 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
     }
   };
 
-  const selectedTracksInOrder = React.useMemo(() => {
-    return selectedTrackIds
-      .map((id) => PRESET_TRACKS.find((t) => t.id === id))
-      .filter((t): t is Track => !!t);
-  }, [selectedTrackIds]);
-
-  // Backtracking global sequencing optimizer
-  const optimizedTracks = React.useMemo(() => {
-    return optimizeTrackOrder(selectedTracksInOrder, modeId);
-  }, [selectedTracksInOrder, modeId]);
-
-  // Measured metrics, a data-driven summary, and a one-line verdict
-  const stats = React.useMemo(() => {
-    if (selectedTracksInOrder.length !== 5 || optimizedTracks.length !== 5) return null;
-
-    let totalScore = 0;
-    for (let i = 0; i < optimizedTracks.length - 1; i++) {
-      totalScore += getTransitionScore(optimizedTracks[i], optimizedTracks[i + 1], modeId, i);
-    }
-
-    const flowScore = Math.max(30, Math.min(100, Math.round(totalScore / 4)));
-
-    // Every figure below is measured from the five tracks actually chosen.
-    // This block used to show invented "metrics": Atmosphere and Variety were
-    // the constants 88 and 95, and Immersion, Replay Value and Flow State were
-    // the same flow score relabelled with different fudge factors.
-    const e = optimizedTracks.map((t) => t.energy);
-    const bpm = optimizedTracks.map((t) => getEffectiveBpm(t.bpm));
-    const steps = e.slice(1).map((v, i) => v - e[i]);
-    const bpmSteps = bpm.slice(1).map((v, i) => Math.abs(v - bpm[i]));
-    const transitions = steps.length;
-    const pct = (n: number) => Math.round((n / transitions) * 100);
-    const range = Math.max(...e) - Math.min(...e);
-
-    const smoothness = Math.max(0, Math.round(100 - (steps.reduce((a, d) => a + Math.abs(d), 0) / transitions) * 100));
-    // ~6 BPM is roughly where a beat-matched transition stops sounding matched.
-    const tempoMatchCount = bpmSteps.filter((d) => d <= 6).length;
-
-    let metrics: { name: string; value: number }[] = [];
-    let concludingSentence = '';
-    let feedbackMessage = '';
-
-    const fmt = (n: number) => (n >= 0 ? '+' : '') + n.toFixed(2);
-
-    if (modeId === 'bu') {
-      const rising = steps.filter((d) => d > 0).length;
-      // Share of the available climb actually achieved, first track to last.
-      const climb = range === 0 ? 0 : Math.max(0, Math.min(100, Math.round(((e[e.length - 1] - e[0]) / range) * 100)));
-      metrics = [
-        { name: 'Smoothness', value: smoothness },
-        { name: 'Rising steps', value: pct(rising) },
-        { name: 'Climb achieved', value: climb },
-        { name: 'Tempo matched', value: pct(tempoMatchCount) },
-      ];
-      feedbackMessage = `${rising} of ${transitions} transitions step up, and it finishes ${fmt(e[e.length - 1] - e[0])} above where it started.`;
-      concludingSentence = rising === transitions ? 'A clean climb, no step backwards.' : 'A climb with a breather or two, which is the point.';
-    } else if (modeId === 'df') {
-      const gentle = steps.filter((d) => Math.abs(d) <= 0.15).length;
-      const steadiness = Math.max(0, Math.round(100 - range * 100));
-      metrics = [
-        { name: 'Smoothness', value: smoothness },
-        { name: 'Gentle transitions', value: pct(gentle) },
-        { name: 'Energy steadiness', value: steadiness },
-        { name: 'Tempo matched', value: pct(tempoMatchCount) },
-      ];
-      feedbackMessage = `${gentle} of ${transitions} transitions move energy by 0.15 or less, and the whole mix spans ${range.toFixed(2)}.`;
-      concludingSentence = range <= 0.25 ? 'Level enough to disappear into.' : 'Some movement in here — a wider mix than Drift usually likes.';
-    } else if (modeId === 'cm') {
-      const peakIdx = e.indexOf(Math.max(...e));
-      // 100 when the peak sits in the middle of five, falling to 0 at either end.
-      const peakCentred = Math.max(0, Math.round(100 - (Math.abs(peakIdx - 2) / 2) * 100));
-      const resolves = range === 0 ? 0 : Math.max(0, Math.min(100, Math.round(((e[peakIdx] - e[e.length - 1]) / range) * 100)));
-      metrics = [
-        { name: 'Smoothness', value: smoothness },
-        { name: 'Peak in the middle', value: peakCentred },
-        { name: 'Comes back down', value: resolves },
-        { name: 'Tempo matched', value: pct(tempoMatchCount) },
-      ];
-      feedbackMessage = `The peak lands on track ${peakIdx + 1} of ${e.length}, then energy settles ${fmt(e[e.length - 1] - e[peakIdx])} by the end.`;
-      concludingSentence = peakIdx > 0 && peakIdx < e.length - 1 ? 'A real middle act, with somewhere to land.' : 'The peak is at an edge, so the arc feels lopsided.';
-    } else {
-      // 'ph' -> Unhinged
-      // The real engine only accepts a curveball at ΔE >= 0.45, relaxing to
-      // 0.35 at most (backend/src/utils/unhingedAlgorithm.ts). Use its loosest
-      // bar rather than an easier one, so the demo cannot overstate the mode.
-      const CURVEBALL_MIN = 0.35;
-      const swings = steps.map((d, i) => ({ big: Math.abs(d) >= CURVEBALL_MIN, anchored: bpmSteps[i] <= 6 }));
-      const bigCount = swings.filter((x) => x.big).length;
-      const anchoredCount = swings.filter((x) => x.big && x.anchored).length;
-      const biggest = Math.max(...steps.map(Math.abs));
-      metrics = [
-        { name: 'Big swings', value: pct(bigCount) },
-        { name: 'Swings anchored', value: bigCount === 0 ? 0 : Math.round((anchoredCount / bigCount) * 100) },
-        { name: 'Biggest swing', value: Math.round(biggest * 100) },
-        { name: 'Tempo matched', value: pct(tempoMatchCount) },
-      ];
-      if (range < CURVEBALL_MIN) {
-        // Say *why*: no ordering of these tracks can swing, because the set
-        // itself has no range. That is the track choice, not the sequencing.
-        feedbackMessage = `These five sit within ${range.toFixed(2)} of each other, so there is nothing to swing between — a curveball needs a jump of ${CURVEBALL_MIN} or more.`;
-        concludingSentence = 'Unhinged needs a calm track and a loud one to throw between.';
-      } else {
-        feedbackMessage = `${bigCount} of ${transitions} transitions swing energy by ${CURVEBALL_MIN} or more; ${anchoredCount} of those keep the tempo close.`;
-        concludingSentence = bigCount === 0 ? 'The range is there, but this order never uses it.' : anchoredCount === bigCount ? 'Every curveball has a tempo to land on.' : 'Some swings have nothing to hold on to.';
-      }
-    }
-
-    return { flowScore, metrics, feedbackMessage, concludingSentence };
-  }, [selectedTracksInOrder, optimizedTracks, modeId]);
+  const score = React.useMemo(
+    () => scoreSelection(mode, selectedTrackIds),
+    [mode, selectedTrackIds]
+  );
 
   return (
-    <div className="flex flex-col h-full justify-between gap-3 min-h-0">
-      {/* 1. Track Selector Header */}
+    // Explicit text-black: Rise and Unhinged sit in `text-white` sections, and
+    // anything here without its own colour inherited white — the title became
+    // white on white (1.00:1) and selected track names white on yellow (1.35:1).
+    <div className="flex h-full min-h-0 flex-col justify-between gap-3 text-black">
+      {/* 1. Track selector */}
       <div className="shrink-0">
-        <div className="flex justify-between items-center mb-1.5 select-none">
-          <h4 className="text-[11px] font-black uppercase tracking-tight">1. Build Your Mix (Select 5)</h4>
+        <div className="mb-1.5 flex items-center justify-between select-none">
+          <h4 className="text-[11px] font-black tracking-tight uppercase">
+            1. Build Your Mix (Select 5)
+          </h4>
           <span
             className={cn(
-              'neo-border px-1.5 py-0.5 rounded text-[9px] font-black uppercase font-mono select-none',
+              'neo-border rounded px-1.5 py-0.5 font-mono text-[9px] font-black uppercase select-none',
               selectedTrackIds.length === 5
-                ? 'bg-brand-pink text-white animate-none'
-                : 'bg-brand-yellow text-black animate-pulse'
+                ? 'bg-brand-pink animate-none text-white'
+                : 'bg-brand-yellow animate-pulse text-black'
             )}
           >
             Selected: {selectedTrackIds.length}/5
           </span>
         </div>
 
-        {/* Tracks Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 mb-1.5">
+        {/* One swipeable row on phones, where the card has ~300px to share
+            with the engine's output; a 5 x 2 grid from sm up. */}
+        <div
+          data-lenis-prevent="true"
+          className="mb-1.5 flex snap-x gap-1 overflow-x-auto overscroll-contain pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible sm:pb-0"
+        >
           {categoryTracks.map((track) => {
             const isSelected = selectedTrackIds.includes(track.id);
             const isDisabled = !isSelected && selectedTrackIds.length >= 5;
@@ -208,34 +114,45 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
             return (
               <button
                 key={track.id}
+                type="button"
                 onClick={() => toggleTrack(track.id)}
                 disabled={isDisabled}
+                title={
+                  track.awkward
+                    ? `${track.name} — tricky: ${track.role.toLowerCase()}`
+                    : track.name
+                }
                 className={cn(
-                  'neo-border p-1 rounded-lg text-left flex gap-1 items-center transition-all relative overflow-hidden select-none w-full',
+                  'neo-border relative flex w-32 shrink-0 snap-start items-center gap-1 overflow-hidden rounded-lg p-1 text-left transition-all select-none sm:w-full',
                   isSelected
-                    ? 'bg-brand-yellow scale-[0.98] translate-y-[1px]'
+                    ? 'bg-brand-yellow translate-y-[1px] scale-[0.98]'
                     : isDisabled
-                    ? 'bg-slate-50 border-slate-300! opacity-40 cursor-not-allowed'
-                    : 'bg-white hover:translate-y-[-1px] hover:shadow-sm'
+                      ? 'cursor-not-allowed border-slate-300! bg-slate-50 opacity-40'
+                      : 'bg-white hover:translate-y-[-1px] hover:shadow-sm'
                 )}
               >
-                {/* Image */}
                 <TrackImage
                   src={track.coverUrl}
                   alt={track.name}
                   containerClassName="w-6.5 h-6.5 rounded neo-border-xs shrink-0"
                 />
-
-                <span className="min-w-0 flex-1 block">
-                  <span className="font-extrabold text-[8.5px] truncate leading-tight block">{track.name}</span>
-                  <span className="flex justify-between items-center mt-0.5">
-                    <span className="text-[7.5px] font-mono font-bold text-slate-500 truncate block">{track.artist}</span>
+                <span className="block min-w-0 flex-1">
+                  <span className="block truncate text-[8.5px] leading-tight font-extrabold">
+                    {track.name}
+                  </span>
+                  <span className="mt-0.5 block truncate font-mono text-[7.5px] font-bold text-slate-500">
+                    {/* Added to give the engine something hard to handle. */}
+                    {track.awkward && (
+                      <span className="font-black text-orange-700 uppercase">
+                        Tricky ·{' '}
+                      </span>
+                    )}
+                    {track.artist}
                   </span>
                 </span>
-
                 {isSelected && (
-                  <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-black text-brand-yellow rounded-full flex items-center justify-center neo-border-xs">
-                    <Check className="w-1.5 h-1.5 stroke-[4px]" />
+                  <span className="text-brand-yellow neo-border-xs absolute top-0.5 right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-black">
+                    <Check className="h-1.5 w-1.5 stroke-[4px]" />
                   </span>
                 )}
               </button>
@@ -244,21 +161,24 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
         </div>
       </div>
 
-      {/* 2. Visual Mixer / Output Display */}
-      <div className="flex-1 border-t border-dashed border-slate-300 pt-2 flex flex-col justify-center min-h-0">
+      {/* 2. What the engine does with them */}
+      <div className="flex min-h-[380px] flex-1 flex-col justify-center border-t border-dashed border-slate-300 pt-2 lg:min-h-0">
         <AnimatePresence mode="wait">
-          {selectedTrackIds.length < 5 ? (
+          {!score ? (
             <motion.div
               key="prompt"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="text-center py-6 font-mono max-w-sm mx-auto select-none"
+              className="mx-auto max-w-sm py-6 text-center font-mono select-none"
             >
-              <Info className="w-7 h-7 text-brand-pink mx-auto mb-1.5" />
-              <p className="text-[11px] font-black text-slate-600 uppercase">Awaiting Playlist Construction</p>
-              <p className="text-[9px] text-slate-400 mt-1 leading-normal">
-                Click {5 - selectedTrackIds.length} more track{5 - selectedTrackIds.length > 1 ? 's' : ''} to build the mix.
+              <Info className="text-brand-pink mx-auto mb-1.5 h-7 w-7" />
+              <p className="text-[11px] font-black text-slate-600 uppercase">
+                Pick five tracks
+              </p>
+              <p className="mt-1 text-[9px] leading-normal text-slate-400">
+                Choose {5 - selectedTrackIds.length} more to see what the engine
+                does with them.
               </p>
             </motion.div>
           ) : (
@@ -267,126 +187,271 @@ export function FlowSandbox({ modeId, selectedTrackIds, onChangeSelected }: Flow
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col min-h-0"
+              className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="flex flex-col bg-[#E8F0FE] neo-border rounded-2xl p-3 relative overflow-hidden neo-shadow h-full min-h-0 justify-between">
-                {/* Header */}
-                <div className="neo-border-b pb-1.5 mb-2 flex justify-between items-center select-none shrink-0">
-                  <span className="text-[10px] font-black uppercase text-brand-blue flex items-center gap-1 font-mono">
-                    {modeId === 'bu' && 'Rise Curve Sequence'}
-                    {modeId === 'df' && 'Drift Flow Sequence'}
-                    {modeId === 'ph' && 'Unhinged Contrast Sequence'}
-                    {modeId === 'cm' && 'Frame Narrative Sequence'}
+              <div className="neo-border neo-shadow relative flex h-full min-h-0 flex-col justify-between overflow-hidden rounded-2xl bg-[#E8F0FE] p-3">
+                <div className="neo-border-b mb-2 flex shrink-0 items-center justify-between pb-1.5 select-none">
+                  {/* sky-700 on this panel is ~5:1; the brand cyan was 1.87:1. */}
+                  <span className="flex items-center gap-1 font-mono text-[10px] font-black text-sky-700 uppercase">
+                    {SEQUENCE_TITLE[mode]}
                   </span>
-                  {stats && (
-                    <span className="bg-brand-blue text-black neo-border-sm rounded px-1.5 py-0.5 text-[8.5px] font-black font-mono">
-                      Match {stats.flowScore}%
-                    </span>
-                  )}
+                  <span
+                    className={cn(
+                      'neo-border-sm rounded px-1.5 py-0.5 font-mono text-[8.5px] font-black tabular-nums',
+                      score.passed === score.applicable
+                        ? 'bg-green-300 text-black'
+                        : 'bg-brand-orange text-white'
+                    )}
+                    title="Promises on this mode's card that the engine kept, for these five tracks"
+                  >
+                    Checks {score.passed}/{score.applicable}
+                  </span>
                 </div>
 
-                {/* Playlist Scroll Area */}
-                <div data-lenis-prevent="true" className="space-y-1.5 flex-1 overflow-y-auto pr-1 scrollbar-thin my-1.5 min-h-0 overscroll-contain">
-                  {optimizedTracks.map((track, idx) => {
-                    const nextTrack = optimizedTracks[idx + 1];
-                    const hasNext = !!nextTrack;
-                    const transScore = hasNext ? getTransitionScore(track, nextTrack, modeId, idx) : 100;
-
-                    let scoreColor = 'bg-green-500';
-                    let textStatus = 'Clean blend';
-                    if (transScore < 75) {
-                      scoreColor = 'bg-brand-orange';
-                      textStatus = 'Tension Bridge';
-                    } else if (transScore < 90) {
-                      scoreColor = 'bg-brand-yellow';
-                      textStatus = 'Smooth Pivot';
-                    }
+                {/* The engine's order */}
+                <div
+                  data-lenis-prevent="true"
+                  className="my-1.5 min-h-0 flex-1 scrollbar-thin space-y-1.5 overflow-y-auto overscroll-contain pr-1"
+                >
+                  {score.tracks.map((track, idx) => {
+                    const step = score.run.order[idx];
+                    const next = score.run.order[idx + 1];
+                    const label = segmentLabel(step.seg);
+                    const transition = next
+                      ? describeStep(next.dE, next.seg)
+                      : null;
+                    // Per-transition version of the smoothness score.
+                    const flow = next
+                      ? Math.max(0, Math.round(100 - Math.abs(next.dE) * 100))
+                      : null;
 
                     return (
                       <div key={`track-${track.id}`} className="flex flex-col">
-                        {/* Track Card */}
                         <motion.div
                           layout
-                          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                          className="bg-white neo-border-sm p-1.5 rounded-lg flex items-center justify-between text-xs neo-shadow-sm select-none"
+                          transition={{
+                            type: 'spring',
+                            stiffness: 350,
+                            damping: 25,
+                          }}
+                          className={cn(
+                            'neo-border-sm neo-shadow-sm flex items-center justify-between rounded-lg bg-white p-1.5 text-xs select-none',
+                            step.seg === 'CURVEBALL' && 'ring-brand-pink ring-2'
+                          )}
                         >
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="w-4 h-4 rounded bg-black text-white neo-border-xs flex items-center justify-center font-black font-mono text-[8px] shrink-0">
+                          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <span className="neo-border-xs flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black font-mono text-[8px] font-black text-white">
                               {idx + 1}
                             </span>
-                            {/* Track Image */}
                             <TrackImage
                               src={track.coverUrl}
                               alt={track.name}
                               containerClassName="w-6.5 h-6.5 rounded neo-border-sm shrink-0"
                             />
                             <div className="min-w-0 flex-1 pr-2">
-                              <p className="font-black truncate text-[10px] leading-tight text-black">{track.name}</p>
-                              <p className="font-bold text-[8px] text-slate-500 truncate leading-none mt-0.5">{track.artist}</p>
+                              <p className="truncate text-[10px] leading-tight font-black text-black">
+                                {track.name}
+                              </p>
+                              <p className="mt-0.5 truncate text-[8px] leading-none font-bold text-slate-500 tabular-nums">
+                                {track.artist} · NRG {track.energy.toFixed(2)}
+                              </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2.5 shrink-0">
-                            <span className="font-mono font-black text-[8px] uppercase bg-brand-yellow neo-border-sm px-1.5 py-0.5 rounded-md select-none shrink-0 text-black">
-                              {track.role}
-                            </span>
-
-                            <div className="flex flex-col items-end w-20 sm:w-24 shrink-0">
-                              <div className="flex justify-between w-full text-[7.5px] font-mono font-bold leading-none mb-0.5">
-                                <span className="text-slate-400">Flow</span>
+                          <div className="flex shrink-0 items-center gap-2.5">
+                            {/* The role the engine gave this track, not a fixed label. */}
+                            {label && (
+                              <span
+                                className={cn(
+                                  'neo-border-sm shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[8px] font-black uppercase select-none',
+                                  step.seg === 'CURVEBALL'
+                                    ? 'bg-brand-pink text-white'
+                                    : 'bg-brand-yellow text-black'
+                                )}
+                              >
+                                {label}
+                              </span>
+                            )}
+                            <div className="hidden w-20 shrink-0 flex-col items-end sm:flex sm:w-24">
+                              <div className="mb-0.5 flex w-full justify-between font-mono text-[7.5px] leading-none font-bold">
+                                <span className="text-slate-500">Next</span>
                                 <span className="font-black text-black">
-                                  {hasNext ? `${transScore}%` : 'END'}
+                                  {flow === null ? 'END' : `${flow}%`}
                                 </span>
                               </div>
-                              <div className="w-full h-1.5 neo-border-sm rounded bg-slate-100 overflow-hidden relative">
+                              <div className="neo-border-sm relative h-1.5 w-full overflow-hidden rounded bg-slate-100">
                                 <div
-                                  className={cn('h-full border-r border-black', scoreColor)}
-                                  style={{ width: `${hasNext ? transScore : 100}%` }}
+                                  className={cn(
+                                    'h-full border-r border-black',
+                                    transition?.color ?? 'bg-slate-300'
+                                  )}
+                                  style={{ width: `${flow ?? 100}%` }}
                                 />
                               </div>
                             </div>
                           </div>
                         </motion.div>
 
-                        {/* Transition details */}
-                        {hasNext && (
-                          <div className="flex items-center pl-8 my-0.5 select-none">
-                            <div className="w-0.5 h-2.5 bg-black border-dashed border-l border-black" />
-                            <span className="text-[7.5px] font-mono font-black uppercase text-slate-400 ml-1.5">
-                              Transition: <span className="text-black font-extrabold">{textStatus}</span>
+                        {transition && next && (
+                          <div className="my-0.5 flex items-center pl-8 select-none">
+                            <div className="h-2.5 w-0.5 border-l border-dashed border-black bg-black" />
+                            <span className="ml-1.5 font-mono text-[7.5px] font-black text-slate-500 uppercase tabular-nums">
+                              Transition:{' '}
+                              <span className="font-extrabold text-black">
+                                {transition.label}
+                              </span>{' '}
+                              <span className="text-slate-500">
+                                ({next.dE > 0 ? '+' : ''}
+                                {next.dE.toFixed(2)})
+                              </span>
                             </span>
                           </div>
                         )}
                       </div>
                     );
                   })}
+
+                  {/* Tracks the engine set aside, with its reason. */}
+                  {score.excludedTracks.length > 0 && (
+                    <div className="mt-1 rounded-lg border-2 border-dashed border-slate-400 bg-white/70 p-1.5">
+                      <p className="mb-1 font-mono text-[7.5px] font-black text-slate-600 uppercase">
+                        Set aside by the engine
+                      </p>
+                      {score.excludedTracks.map(({ track, reason }) => (
+                        <p
+                          key={track.id}
+                          className="font-mono text-[8px] leading-snug font-bold text-slate-600"
+                        >
+                          <span className="font-black text-black">
+                            {track.name}
+                          </span>{' '}
+                          <span className="tabular-nums">
+                            (NRG {track.energy.toFixed(2)}, {track.bpm} BPM)
+                          </span>{' '}
+                          — {reason}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Score Summary & Feedback */}
-                {stats && (
-                  <div className="mt-2.5 neo-border-sm bg-white rounded-lg p-2 neo-shadow-sm select-none shrink-0">
-                    <p className="text-[9px] font-bold leading-normal text-slate-800 mb-2">
-                      {stats.feedbackMessage} <span className="font-black text-brand-pink">{stats.concludingSentence}</span>
-                    </p>
+                {/* Checks and bars, each against a random order of the same picks */}
+                <div className="neo-border-sm neo-shadow-sm mt-2.5 shrink-0 rounded-lg bg-white p-2 select-none">
+                  <p className="mb-1.5 text-[9px] leading-normal font-bold text-slate-800">
+                    {score.summary}{' '}
+                    <span className="font-black text-sky-700">
+                      {score.comparison}
+                    </span>
+                  </p>
 
-                    <div className="grid grid-cols-2 gap-2 border-t border-dashed border-slate-300 pt-2">
-                      {stats.metrics.map((metric) => (
-                        <div key={metric.name} className="flex flex-col gap-0.5">
-                          <div className="flex justify-between text-[7.5px] font-mono font-black uppercase text-slate-600">
-                            <span>{metric.name}</span>
-                            <span className="text-black">{metric.value}%</span>
+                  <div className="flex flex-col gap-1.5 border-t border-dashed border-slate-300 pt-1.5 sm:grid sm:grid-cols-[1.3fr_1fr] sm:gap-3">
+                    <ul className="flex flex-col gap-0.5" aria-label="Checks">
+                      {score.checks.map((check) => (
+                        <li
+                          key={check.id}
+                          data-check={check.id}
+                          className="flex items-center gap-1.5 font-mono text-[8px] font-bold"
+                          title={check.hint}
+                        >
+                          <span
+                            className={cn(
+                              'neo-border-xs flex h-3 w-3 shrink-0 items-center justify-center rounded-sm',
+                              check.pass === true && 'bg-green-400',
+                              check.pass === false &&
+                                'bg-brand-pink text-white',
+                              check.pass === null &&
+                                'bg-slate-200 text-slate-500'
+                            )}
+                            aria-label={
+                              check.pass === true
+                                ? 'Passed'
+                                : check.pass === false
+                                  ? 'Failed'
+                                  : 'Does not apply'
+                            }
+                          >
+                            {check.pass === true ? (
+                              <Check className="h-2 w-2 stroke-[4px]" />
+                            ) : check.pass === false ? (
+                              <X className="h-2 w-2 stroke-[4px]" />
+                            ) : (
+                              <Minus className="h-2 w-2 stroke-[4px]" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-black">
+                            {check.name}
+                          </span>
+                          <span className="shrink-0 text-slate-500 tabular-nums">
+                            {check.shuffled === null
+                              ? 'shuffled —'
+                              : `shuffled ${check.shuffled}%`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="flex flex-col justify-center gap-1">
+                      {score.bars.map((bar) => (
+                        <div
+                          key={bar.id}
+                          data-bar={bar.id}
+                          className="flex flex-col gap-0.5"
+                          title={bar.hint}
+                        >
+                          <div className="flex justify-between gap-1 font-mono text-[7.5px] font-black text-slate-600 uppercase">
+                            <span className="truncate">{bar.name}</span>
+                            <span className="shrink-0 tabular-nums" data-value>
+                              {bar.value === null ? (
+                                <span
+                                  className="text-slate-400"
+                                  aria-label="Nothing to measure"
+                                >
+                                  —
+                                </span>
+                              ) : (
+                                <span className="text-black">{bar.value}%</span>
+                              )}
+                              {bar.shuffled !== null && (
+                                <span className="text-slate-400 normal-case">
+                                  {' '}
+                                  · shuffled {bar.shuffled}%
+                                </span>
+                              )}
+                            </span>
                           </div>
-                          <div className="w-full h-1.5 neo-border-xs rounded bg-slate-100 overflow-hidden relative">
+                          {bar.value === null ? (
+                            // Hatched, not empty: "nothing to measure" must not look
+                            // like a measured zero.
                             <div
-                              className="h-full bg-brand-pink border-r border-black"
-                              style={{ width: `${metric.value}%` }}
+                              className="neo-border-xs h-1.5 w-full overflow-hidden rounded opacity-60"
+                              style={{
+                                backgroundImage:
+                                  'repeating-linear-gradient(135deg, #cbd5e1 0 3px, transparent 3px 6px)',
+                              }}
                             />
-                          </div>
+                          ) : (
+                            <div className="neo-border-xs relative h-1.5 w-full overflow-hidden rounded bg-slate-100">
+                              <div
+                                className="bg-brand-pink h-full border-r border-black"
+                                style={{ width: `${bar.value}%` }}
+                              />
+                              {/* Where a random order of the same picks lands. */}
+                              {bar.shuffled !== null && (
+                                <div
+                                  className="absolute top-0 bottom-0 w-0.5 bg-black"
+                                  style={{
+                                    left: `calc(${bar.shuffled}% - 1px)`,
+                                  }}
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </motion.div>
           )}

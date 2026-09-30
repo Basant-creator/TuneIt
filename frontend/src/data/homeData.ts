@@ -1,3 +1,5 @@
+import { typicalSelection } from '@/utils/sandboxMetrics';
+
 export const chaoticTracks = [
   {
     id: 't1',
@@ -134,15 +136,28 @@ export const flowModes = [
     id: 'cm',
     emoji: '',
     title: 'Frame',
-    description: "Shapes the playlist like a film: an opening act at your playlist's usual energy, a middle that builds to one clear peak, then a resolution. Made for listening start to finish.",
+    description: "Shapes the playlist like a film: an opening act at your playlist's usual energy, a middle that turns on one clear peak or valley, then a resolution. Made for listening start to finish.",
     color: 'white' as const,
     bgClass: 'bg-brand-yellow text-black',
     svgFillColor: 'var(--brand-yellow)',
     features: [
       'Act I sits at your usual energy',
-      'Act II builds to one clear peak',
+      'Act II turns on a peak or a valley',
       'Act III resolves it',
     ],
     desc: 'Three acts'
   },
 ];
+
+/**
+ * The five tracks preselected in each mode's sandbox card: a typical
+ * selection for that mode, not its best one (see typicalSelection). Derived
+ * from the engine results, so it stays typical when they are regenerated.
+ * Users can still pick any combination.
+ */
+export const DEFAULT_SANDBOX_PICKS: Record<'bu' | 'df' | 'ph' | 'cm', string[]> = {
+  bu: typicalSelection('bu'),
+  df: typicalSelection('df'),
+  ph: typicalSelection('ph'),
+  cm: typicalSelection('cm'),
+};

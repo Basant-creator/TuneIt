@@ -18,9 +18,11 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "verify:api": "ts-node --transpile-only scripts/smokeTest.ts",
-    "verify": "npm run verify:engines && npm run verify:api",
+    "verify": "npm run verify:engines && npm run verify:api && npm run verify:sandbox",
     "probe:engines": "ts-node --transpile-only scripts/probeEngineBehaviour.ts",
-    "backfill:analysis": "ts-node --transpile-only scripts/backfillAnalysis.ts"
+    "backfill:analysis": "ts-node --transpile-only scripts/backfillAnalysis.ts",
+    "generate:sandbox": "ts-node --transpile-only scripts/generateSandboxResults.ts",
+    "verify:sandbox": "ts-node --transpile-only scripts/generateSandboxResults.ts --check"
   },
   "dependencies": {
     "@google/genai": "^2.10.0",

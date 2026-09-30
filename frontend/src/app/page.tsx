@@ -6,7 +6,7 @@ import { ArrowRight, ListRestart, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { cn } from '@/utils/cn';
-import { chaoticTracks, optimizedTracks, flowModes } from '@/data/homeData';
+import { chaoticTracks, optimizedTracks, flowModes, DEFAULT_SANDBOX_PICKS } from '@/data/homeData';
 import { NeoButton } from '@/components/NeoButton';
 import { Sticker } from '@/components/Sticker';
 import { DoodleElement } from '@/components/DoodleElement';
@@ -66,12 +66,8 @@ export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<'chaotic' | 'optimized'>('chaotic');
   const [selectedFlow, setSelectedFlow] = React.useState('bu');
-  const [selectedTrackIdsByMode, setSelectedTrackIdsByMode] = React.useState<Record<string, string[]>>({
-    bu: ['r1', 'r2', 'r3', 'r4', 'r5'],
-    df: ['d1', 'd2', 'd3', 'd4', 'd5'],
-    ph: ['u1', 'u2', 'u3', 'u4', 'u5'],
-    cm: ['f1', 'f2', 'f3', 'f4', 'f5'],
-  });
+  const [selectedTrackIdsByMode, setSelectedTrackIdsByMode] =
+    React.useState<Record<string, string[]>>(() => ({ ...DEFAULT_SANDBOX_PICKS }));
 
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
   const [authError, setAuthError] = React.useState<string | null>(null);
@@ -484,7 +480,12 @@ export default function Home() {
                     <div className="lg:col-span-7 h-full w-full flex items-center justify-center relative min-h-[300px] lg:min-h-0">
                       <div className="w-full h-full rounded-3xl neo-border neo-shadow-lg bg-white relative overflow-hidden p-6 flex flex-col">
 
-                        <div className="flex-1 overflow-hidden flex flex-col">
+                        {/* Below lg the mode card and the sandbox share one screen,
+                            leaving the sandbox ~250px: it scrolls inside itself there. */}
+                        <div
+                          data-lenis-prevent="true"
+                          className="flex-1 overflow-y-auto overscroll-contain lg:overflow-hidden flex flex-col"
+                        >
                           <FlowSandbox
                             modeId={mode.id}
                             selectedTrackIds={selectedTrackIdsByMode[mode.id] || []}

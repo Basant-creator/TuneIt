@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { chaoticTracks, optimizedTracks, flowModes } from './homeData';
+import { chaoticTracks, optimizedTracks, flowModes, DEFAULT_SANDBOX_PICKS } from './homeData';
 import { smoothnessScore } from '@/utils/smoothness';
+import { PRESET_TRACKS } from './presetTracks';
+import { gainOverShuffle, getEngineRun, scoreSelection } from '@/utils/sandboxMetrics';
 
 /**
  * The landing page's before/after demo is the product's first claim. It used to
@@ -57,3 +59,49 @@ describe('flow mode copy', () => {
     }
   });
 });
+
+describe('sandbox default picks are typical, not flattering', () => {
+  // The old defaults were each mode's best case (Drift's scored 88 when its
+  // median selection scored 72), so every card opened looking perfect.
+  const MODES = ['bu', 'df', 'ph', 'cm'] as const;
+
+  it('picks five real presets from the right mode', () => {
+    for (const [mode, ids] of Object.entries(DEFAULT_SANDBOX_PICKS)) {
+      expect(ids).toHaveLength(5);
+      for (const id of ids) {
+        expect(PRESET_TRACKS.find((t) => t.id === id)?.category).toBe(mode);
+      }
+    }
+  });
+
+  it("sits in the middle half of its mode's selections by gain over a shuffle", () => {
+    for (const mode of MODES) {
+      const gains = selections(mode).map((ids) => gainOverShuffle(getEngineRun(ids)!)).sort((a, b) => a - b);
+      const q1 = gains[Math.floor(gains.length * 0.25)];
+      const q3 = gains[Math.floor(gains.length * 0.75)];
+      const mine = gainOverShuffle(getEngineRun(DEFAULT_SANDBOX_PICKS[mode])!);
+      expect(mine).toBeGreaterThanOrEqual(q1);
+      expect(mine).toBeLessThanOrEqual(q3);
+      expect(mine).toBeLessThan(gains[gains.length - 1]);
+    }
+  });
+
+  it('renders a full card for every default', () => {
+    for (const mode of MODES) {
+      const s = scoreSelection(mode, DEFAULT_SANDBOX_PICKS[mode])!;
+      expect(s.checks.length).toBeGreaterThan(0);
+      expect(s.bars).toHaveLength(2);
+    }
+  });
+});
+
+function selections(mode: string): string[][] {
+  const ids = PRESET_TRACKS.filter((t) => t.category === mode).map((t) => t.id);
+  const out: string[][] = [];
+  const pick = (from: number, chosen: string[]) => {
+    if (chosen.length === 5) return void out.push(chosen);
+    for (let i = from; i < ids.length; i++) pick(i + 1, [...chosen, ids[i]]);
+  };
+  pick(0, []);
+  return out;
+}
