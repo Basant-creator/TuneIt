@@ -22,7 +22,8 @@ export interface Track {
   genre: string;
   /** Camelot key, absent when the analyser could not determine one. */
   key?: string; // Camelot notation, e.g., '8A'
-  subBassDensity: number; // Sub-bass energy density (0.0 to 1.0)
+  /** Sub-bass energy density 0.0-1.0; undefined when no measurement exists. */
+  subBassDensity?: number;
 }
 
 export type UnhingedRole = 'SETUP' | 'CURVEBALL' | 'RECOVERY';
@@ -91,10 +92,14 @@ export function normalizeTrack(raw: any, index: number = 0): Track {
   const genre = raw.genre && typeof raw.genre === 'string' ? raw.genre : deriveGenreFromTrack(title, artist, bpm, arousal);
   const key = normalizeCamelotKey(raw.key);
 
+  // Sub-bass stays undefined unless measured. It used to be derived from a hash
+  // of the track id (deriveSubBassDensity), so every sub-bass anchor decision —
+  // in both the outlier filter and curveball picking — was noise, and the same
+  // song uploaded twice could be anchored differently. Nothing in the pipeline
+  // measures sub-bass today, so this anchor is simply unavailable until it does.
   const subBassVal = raw.subBassDensity;
-  const subBassDensity = typeof subBassVal === 'number' && !isNaN(subBassVal)
-    ? Math.max(0, Math.min(1, subBassVal))
-    : deriveSubBassDensity(id, bpm, arousal);
+  const subBassDensity =
+    typeof subBassVal === 'number' && !isNaN(subBassVal) ? Math.max(0, Math.min(1, subBassVal)) : undefined;
 
   return {
     id,
@@ -128,15 +133,6 @@ function normalizeCamelotKey(raw: unknown): string | undefined {
   return `${num}${match[2]}`;
 }
 
-function deriveSubBassDensity(id: string, bpm: number, arousal: number): number {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 17 + id.charCodeAt(i)) % 503;
-  }
-  const rawDensity = (hash / 503.0) * 0.4 + (arousal * 0.5) + (bpm > 130 ? 0.1 : 0);
-  return Number(Math.max(0.05, Math.min(0.95, rawDensity)).toFixed(2));
-}
-
 function deriveGenreFromTrack(title: string, artist: string, bpm: number, arousal: number): string {
   if (bpm < 90 && arousal < 0.4) return 'Ambient / Chill';
   if (bpm < 110 && arousal < 0.5) return 'Downtempo / Jazz';
@@ -148,7 +144,6 @@ function deriveGenreFromTrack(title: string, artist: string, bpm: number, arousa
 
 export function isCamelotCompatible(keyA?: string, keyB?: string): boolean {
   // No key means no claim of compatibility, rather than a coin flip.
-  if (!keyA || !keyB) return false;
   if (!keyA || !keyB) return false;
   const matchA = keyA.match(/^(\d{1,2})([AB])$/i);
   const matchB = keyB.match(/^(\d{1,2})([AB])$/i);
@@ -174,9 +169,11 @@ export function isCamelotCompatible(keyA?: string, keyB?: string): boolean {
 export function checkAnchor(prev: Track, cand: Track): AnchorCheckResult {
   const harmonicMatched = isCamelotCompatible(prev.key, cand.key);
 
-  // Sub-Bass Density Delta threshold widened to <= 0.20
-  const subBassDelta = Math.abs(cand.subBassDensity - prev.subBassDensity);
-  const isSubBassAnchored = subBassDelta <= 0.20;
+  // Sub-Bass Density Delta threshold widened to <= 0.20. Only when both tracks
+  // were actually measured; an unknown density makes no anchoring claim.
+  const hasSubBass = prev.subBassDensity !== undefined && cand.subBassDensity !== undefined;
+  const subBassDelta = hasSubBass ? Math.abs(cand.subBassDensity! - prev.subBassDensity!) : Infinity;
+  const isSubBassAnchored = hasSubBass && subBassDelta <= 0.20;
 
   // BPM Sync Multipliers expanded to include 0.5x, 0.75x (3:4), 1.0x, 1.33x (4:3), 2.0x
   const bpmRatio = cand.bpm / (prev.bpm || 1);
@@ -272,12 +269,16 @@ export function processUnhingedAlgorithm(inputPool: any[]): UnhingedOutput {
     const isExplicitOutlier = genreStr.includes('outlier');
     const isExtremeEnergyOutlier = cand.arousal < 0.20 || cand.arousal > 0.85;
 
-    const harmonicPartners = validCandidates.filter(
-      other => other.id !== cand.id && isCamelotCompatible(cand.key, other.key)
-    );
-
-    const hasStrongOppositeAnchor = harmonicPartners.some(
-      other => Math.abs(other.arousal - cand.arousal) >= 0.40 && Math.abs(cand.subBassDensity - other.subBassDensity) <= 0.20
+    // "Un-anchorable" must mean what the curveball picker means by anchored:
+    // a compatible key OR a synced tempo (or measured sub-bass), via checkAnchor.
+    // This used to accept only key-compatible partners, so it discarded tracks
+    // the engine would happily have anchored by tempo — e.g. a 95 BPM track
+    // opposite a 120 BPM one, which checkAnchor accepts as a 4:3 sync.
+    const hasStrongOppositeAnchor = validCandidates.some(
+      other =>
+        other.id !== cand.id &&
+        Math.abs(other.arousal - cand.arousal) >= 0.40 &&
+        (checkAnchor(cand, other).isAnchored || checkAnchor(other, cand).isAnchored)
     );
 
     const isOrphan = isExplicitOutlier || (isExtremeEnergyOutlier && !hasStrongOppositeAnchor);
