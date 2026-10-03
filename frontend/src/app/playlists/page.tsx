@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { TrackImage } from '@/components/TrackImage';
 import { api, ApiError } from '@/services/api';
 import { takeResumeTarget } from '@/utils/sequenceDraft';
+import { Footer } from '@/components/Footer';
 import type { Playlist, UserProfile } from '@/types/flow';
 
 export default function PlaylistsPage() {
@@ -167,6 +168,7 @@ export default function PlaylistsPage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

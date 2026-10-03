@@ -14,6 +14,7 @@ import { PlaylistCard } from '@/components/PlaylistCard';
 import { EnergyGraph } from '@/components/EnergyGraph';
 import { HeroVisualization } from '@/components/HeroVisualization';
 import { CTASection } from '@/components/CTASection';
+import { Footer } from '@/components/Footer';
 import { FlowSandbox } from '@/components/FlowSandbox';
 import { Header } from '@/components/Header';
 import { api } from '@/services/api';
@@ -134,7 +135,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FFE5] text-black relative pb-16">
+    <div className="min-h-screen bg-[#F8FFE5] text-black relative">
 
       {/* 1. ANIMATED STYLISH NAVBAR */}
       <Header userProfile={userProfile} detectSession />
@@ -627,10 +628,11 @@ export default function Home() {
       </section>
 
       {/* 6. FINAL CALL TO ACTION */}
-      <section className="py-16 px-6 max-w-7xl mx-auto">
+      <section className="pt-16 pb-32 px-6 max-w-7xl mx-auto">
         <CTASection />
       </section>
       </main>
+      <Footer />
     </div>
   );
 }

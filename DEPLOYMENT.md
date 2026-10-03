@@ -68,6 +68,7 @@ failing on the first request.
 | `NEXT_PUBLIC_API_URL` | yes | Base URL of the backend, or `/` to reach it through this app (see `BACKEND_ORIGIN`). **Inlined at build time** — changing it requires a rebuild, not just a restart. A value that is neither `/` nor `http(s)://…` fails the build. |
 | `BACKEND_ORIGIN` | no | Server-side. When set (e.g. `https://tuneit-api.onrender.com`), `/api/*` and `/auth/*` on this app are passed through to the backend. Use it when there is no custom domain; see [§4a](#4a-render--vercel-without-a-custom-domain). |
 | `NEXT_PUBLIC_APP_URL` | no | Public URL of this app. Used for share-card links. |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | no | Google Search Console "HTML tag" code. Adds the ownership tag Google's OAuth verification checks for. |
 
 ---
 

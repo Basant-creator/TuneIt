@@ -46,6 +46,12 @@ export const metadata: Metadata = {
     title: "TuneIt — it's not the songs, it's the order",
     description: DESCRIPTION,
   },
+  // Google Search Console ownership tag. Google's OAuth verification asks the
+  // app to prove it controls its home page's address; set this to the code
+  // Search Console gives for the "HTML tag" method.
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
+    : {}),
 };
 
 export const viewport: Viewport = {
