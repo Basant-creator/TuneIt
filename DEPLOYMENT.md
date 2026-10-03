@@ -65,8 +65,9 @@ failing on the first request.
 
 | Variable | Required | Notes |
 | :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | yes | Base URL of the backend. **Inlined at build time** — changing it requires a rebuild, not just a restart. |
-| `NEXT_PUBLIC_APP_URL` | no | Public URL of this app. |
+| `NEXT_PUBLIC_API_URL` | yes | Base URL of the backend, or `/` to reach it through this app (see `BACKEND_ORIGIN`). **Inlined at build time** — changing it requires a rebuild, not just a restart. A value that is neither `/` nor `http(s)://…` fails the build. |
+| `BACKEND_ORIGIN` | no | Server-side. When set (e.g. `https://tuneit-api.onrender.com`), `/api/*` and `/auth/*` on this app are passed through to the backend. Use it when there is no custom domain; see [§4a](#4a-render--vercel-without-a-custom-domain). |
+| `NEXT_PUBLIC_APP_URL` | no | Public URL of this app. Used for share-card links. |
 
 ---
 
@@ -94,7 +95,9 @@ with `prisma/schema.prisma`.
 
 ### Render / Railway / Fly.io (Node buildpack)
 
-- **Build command:** `npm ci && npm run build`
+- **Build command:** `npm ci --include=dev && npm run build` — TypeScript and the
+  Prisma CLI are dev dependencies, and a plain `npm ci` skips them once
+  `NODE_ENV=production` is set, failing at `postinstall` (`prisma generate`).
 - **Start command:** `npm start`
 - **Health check path:** `/health` (liveness) or `/ready` (also checks Postgres)
 
@@ -109,13 +112,67 @@ The image runs as the unprivileged `node` user and ships a `HEALTHCHECK`.
 
 ---
 
+## 4a. Render + Vercel without a custom domain
+
+On their free addresses the frontend is on `*.vercel.app` and the backend on
+`*.onrender.com`. Called directly, the backend's session cookie is a
+third-party cookie: Safari blocks it and Firefox partitions it, so sign-in
+loops. Instead the browser talks only to the Vercel app, and Vercel passes
+`/api/*` and `/auth/*` through to Render (`frontend/next.config.ts`). The
+cookie is then first-party and works in every browser.
+
+**Limits of this setup.** Vercel waits at most **120 seconds** for a passed-
+through request. The first analysis of a large playlist (roughly 250+ tracks
+never seen before) can take longer; the backend keeps going and saves each
+batch, so running it again picks up where it stopped, and the app says so. On
+Render's free instance, the first request after 15 idle minutes waits about a
+minute for it to wake, and sleeping clears all sessions.
+
+Do the steps in order; later ones need addresses from earlier ones.
+
+1. **Database.** Run once against Neon (safe to repeat):
+   ```bash
+   cd backend && DATABASE_URL="<neon connection string>" npx prisma db push
+   ```
+2. **Render: create the backend.** New → Web Service → this repo.
+   Root Directory `backend` · Runtime Node · Build `npm ci --include=dev && npm run build`
+   · Start `npm start` · Health Check Path `/health` · region next to the database.
+   Environment: `NODE_VERSION=22`, `NODE_ENV=production`, `GOOGLE_CLIENT_ID`,
+   `GOOGLE_CLIENT_SECRET`, `GEMINI_API_KEY`, `DATABASE_URL`.
+   Create it, then note its address, e.g. `https://tuneit-api.onrender.com`,
+   and check `<that address>/health` returns `"status":"ok"`.
+3. **Vercel: create the frontend.** Add New → Project → this repo.
+   Root Directory `frontend` · Framework Next.js. Environment:
+   `NEXT_PUBLIC_API_URL=/` and `BACKEND_ORIGIN=<the Render address>`. Deploy.
+   Note the production address under Settings → Domains, e.g.
+   `https://tuneit.vercel.app`. Set Settings → Build and Deployment →
+   Node.js Version to 22.x.
+4. **Vercel: app URL.** Add `NEXT_PUBLIC_APP_URL=<the Vercel address>` and
+   redeploy (Deployments → ⋯ → Redeploy).
+5. **Render: point the backend at the app.** Add
+   `FRONTEND_URL=<the Vercel address>` and
+   `GOOGLE_REDIRECT_URI=<the Vercel address>/auth/callback`. Saving redeploys.
+6. **Google Cloud Console.** On the Web application OAuth client, add the
+   authorized redirect URI `<the Vercel address>/auth/callback` exactly. Add
+   testers under Audience → Test users.
+7. **Check.** `<the Vercel address>/auth/status` returns
+   `{"authenticated":false,…}` (proving the pass-through), then sign in, arrange
+   a playlist, sign out — once in Safari or Firefox too.
+
+Use the production `*.vercel.app` address everywhere; each preview deployment
+has its own address, and sign-in only works on the one in `FRONTEND_URL`.
+
+---
+
 ## 5. Deploy the frontend
 
 ### Vercel
 
 - **Root directory:** `frontend`
 - **Framework preset:** Next.js
-- **Environment variable:** `NEXT_PUBLIC_API_URL=https://api.your-domain.com`
+- **With a custom domain:** `NEXT_PUBLIC_API_URL=https://api.your-domain.com`
+- **Without one:** `NEXT_PUBLIC_API_URL=/` and `BACKEND_ORIGIN=https://<backend>.onrender.com`
+  — see [§4a](#4a-render--vercel-without-a-custom-domain)
 
 Vercel gives every preview deployment its own URL. Add those origins to the
 backend's `ADDITIONAL_CORS_ORIGINS`, or previews will fail CORS.

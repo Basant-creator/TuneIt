@@ -155,3 +155,15 @@ describe('response shaping', () => {
     expect(JSON.parse(init.body)).toEqual({ mode: 'ph' });
   });
 });
+
+describe('proxy timeout', () => {
+  it("explains Vercel's 2-minute limit and that a retry resumes", async () => {
+    // Vercel answers 504 with its own HTML page when the backend runs long.
+    fetchMock.mockResolvedValue(new Response('<html>An error occurred</html>', { status: 504 }));
+    const err = await api.rearrange('PL1', 'bu').catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.code).toBe('UPSTREAM_TIMEOUT');
+    expect(err.message).toMatch(/try again/i);
+    expect(err.isAuthError).toBe(false);
+  });
+});

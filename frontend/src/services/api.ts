@@ -78,6 +78,16 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
   clearTimeout(timer);
 
+  // Vercel's pass-through to the backend gives up after 2 minutes. The backend
+  // keeps going and saves each analysed batch, so a retry resumes from there.
+  if (response.status === 504) {
+    throw new ApiError(
+      'This took longer than the 2-minute limit, usually the first analysis of a large playlist. The tracks analysed so far are saved: try again and it will pick up from there.',
+      504,
+      'UPSTREAM_TIMEOUT'
+    );
+  }
+
   // 204 and friends have no body to parse.
   const text = await response.text();
   let data: Record<string, unknown> = {};

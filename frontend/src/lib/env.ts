@@ -10,7 +10,10 @@ function normalize(url: string): string {
 }
 
 export const env = {
-  /** Base URL of the TuneIt backend API. */
+  /**
+   * Base URL of the TuneIt backend API. "/" means this app's own origin: the
+   * API is reached through the BACKEND_ORIGIN rewrite in next.config.ts.
+   */
   apiUrl: normalize(process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001'),
   /** Public URL this app is served from. */
   appUrl: normalize(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
