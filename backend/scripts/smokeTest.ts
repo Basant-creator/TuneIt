@@ -304,6 +304,17 @@ async function main(): Promise<void> {
       String(blocked.headers['access-control-allow-origin'])
     );
 
+    console.log('\nCaching');
+    // A CDN in front (Vercel, when there is no custom domain) must never keep a
+    // response carrying a session cookie or someone's playlists.
+    for (const res of [status, login, await call(port, 'GET', '/api/playlists')]) {
+      assert(
+        `${res.status} response is marked no-store`,
+        String(res.headers['cache-control']).includes('no-store'),
+        String(res.headers['cache-control'])
+      );
+    }
+
     console.log('\nMisc');
     const notFound = await call(port, 'GET', '/definitely/not/a/route');
     assert('unknown route returns a JSON 404', notFound.status === 404 && !!notFound.body?.error);

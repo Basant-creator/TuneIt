@@ -56,6 +56,14 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Resolve the caller's YouTube session from the TuneIt cookie.
 app.use(attachSession);
 
+// Every response is per visitor: a session cookie, account data, a playlist.
+// When there is no custom domain, Vercel proxies /api and /auth to this server
+// and its CDN honours upstream cache headers, so say plainly: never cache.
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`[Server] ${req.method} ${req.url}`);
