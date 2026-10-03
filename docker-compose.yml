@@ -37,7 +37,7 @@ services:
     ports:
       - '3001:3001'
     # Apply the schema before serving.
-    command: sh -c "npx prisma db push --skip-generate && node dist/src/server.js"
+    command: sh -c "npx prisma db push --skip-generate && node dist/server.js"
 
   frontend:
     build:

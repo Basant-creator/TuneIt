@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
@@ -39,7 +39,22 @@ jobs:
         run: npm run verify:sandbox
 
       - name: Build
-        run: npx tsc
+        run: npm run build
+
+      # Start what was built, exactly as `npm start` does in production. A
+      # compiled-but-misplaced server (dist/src/server.js vs dist/server.js)
+      # once passed every check above and failed only on deploy.
+      - name: Built server starts
+        env:
+          PORT: '3099'
+        run: |
+          npm start > server.log 2>&1 &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:3099/health && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
 
   frontend:
     name: Frontend — lint, typecheck, test, build
@@ -51,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 

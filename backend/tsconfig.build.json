@@ -1,0 +1,11 @@
+{
+  // Production build: the server only. tsconfig.json also includes scripts/
+  // for type-checking, which made tsc root the output at backend/ and write the
+  // server to dist/src/server.js, while `npm start` runs dist/server.js.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*"]
+}

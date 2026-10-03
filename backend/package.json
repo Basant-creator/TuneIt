@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "evaluate:drift": "ts-node scripts/evaluateSequencing.ts",
     "evaluate:frame": "ts-node scripts/evaluateFrameEngine.ts",
@@ -43,6 +43,6 @@
     "typescript": "^5.5.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "22.x"
   }
 }

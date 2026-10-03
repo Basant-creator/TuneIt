@@ -12,7 +12,7 @@ TuneIt is two deployables that talk over HTTP with a session cookie:
 
 ## 1. Prerequisites
 
-- **Node.js 20+** (the backend declares `>=18`, CI and the images use 20)
+- **Node.js 22** (the backend pins `22.x`; CI and the images use 22)
 - **A PostgreSQL database** and its connection string
 - **Google OAuth client** — Google Cloud Console → APIs & Services → Credentials → *OAuth client ID* → *Web application*
   - Enable the **YouTube Data API v3** for the project
