@@ -72,6 +72,46 @@ export default function PrivacyPage() {
         <p>TuneIt has no user accounts, keeps no record of who used it, and stores no names, emails or playlists.</p>
       </Section>
 
+      <Section title="How your data is protected">
+        <ul>
+          <li>
+            <strong>Encrypted in transit.</strong> Every connection — your browser to TuneIt, TuneIt to its server, the
+            server to Google and to its database — uses HTTPS/TLS encryption. The site tells browsers to use HTTPS only
+            (HSTS).
+          </li>
+          <li>
+            <strong>Your Google access stays on the server.</strong> The access token Google issues never reaches your
+            browser and is never written to a disk, a database or a log. It lives only in the server&apos;s memory, expires
+            within an hour, and is revoked as soon as you sign out. Your browser holds only a random 256-bit session
+            identifier, in a cookie marked HttpOnly (page scripts cannot read it), Secure (sent only over HTTPS) and
+            SameSite (not sent by other websites).
+          </li>
+          <li>
+            <strong>Nothing personal is kept.</strong> Your playlists, tracks and channel details are processed in memory
+            to answer your request and then discarded. The only data stored long-term is the song analysis described
+            above, which contains nothing about you.
+          </li>
+          <li>
+            <strong>Protected sign-in and requests.</strong> Each sign-in is tied to your browser session with a one-time
+            random value, which blocks forged sign-in attempts. The server accepts requests only from TuneIt&apos;s own
+            website, and marks every response as not cacheable so no copy is kept along the way.
+          </li>
+          <li>
+            <strong>Restricted access.</strong> The database accepts only encrypted connections and Neon encrypts the data
+            it stores. Passwords and API keys are kept in the hosting providers&apos; private settings, never in the source
+            code, and only TuneIt&apos;s developer can access the hosting accounts.
+          </li>
+          <li>
+            <strong>Not used for anything else.</strong> TuneIt does not sell your data, show ads, or use your data to train
+            AI models.
+          </li>
+          <li>
+            Found a security problem? Please report it to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. If an
+            issue ever affects users, a notice will be posted on this site.
+          </li>
+        </ul>
+      </Section>
+
       <Section title="Services TuneIt relies on">
         <ul>
           <li>

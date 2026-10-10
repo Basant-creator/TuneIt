@@ -7,7 +7,7 @@
 export const CONTACT_EMAIL = 'basantbhushan89@gmail.com';
 
 /** Shown as "Last updated" on both pages. */
-export const LEGAL_UPDATED = '3 October 2026';
+export const LEGAL_UPDATED = '10 October 2026';
 
 /** Pages YouTube's API Services policies require the privacy policy to link to. */
 export const EXTERNAL = {

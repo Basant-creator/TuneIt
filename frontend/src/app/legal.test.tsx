@@ -42,6 +42,15 @@ describe('privacy policy', () => {
     expect(hrefs()).toContain(`mailto:${CONTACT_EMAIL}`);
   });
 
+  it('states how data is protected, as Google verification requires', () => {
+    // Google rejected the first submission for lacking "data protection
+    // mechanisms for sensitive data".
+    render(<PrivacyPage />);
+    expect(screen.getByRole('heading', { name: /how your data is protected/i })).toBeInTheDocument();
+    expect(screen.getByText(/HTTPS\/TLS encryption/)).toBeInTheDocument();
+    expect(screen.getByText(/never reaches your\s+browser/)).toBeInTheDocument();
+  });
+
   it('describes temporary sign-in, matching the backend', () => {
     // backend: access_type 'online', no refresh token, revoked on sign-out.
     render(<PrivacyPage />);
